@@ -1,0 +1,222 @@
+{
+    "input_data": {
+        "Vehicles": [
+            {
+                "name": "Ebusco 3.0 12",
+                "procurement_cost": 370000.0,
+                "useful_life": 12,
+                "cost_escalation": 0.025
+            },
+            {
+                "name": "Solaris Urbino 18",
+                "procurement_cost": 603000.0,
+                "useful_life": 12,
+                "cost_escalation": 0.025
+            },
+            {
+                "name": "Alexander Dennis Enviro500EV",
+                "procurement_cost": 700000.0,
+                "useful_life": 12,
+                "cost_escalation": 0.025
+            },
+            {
+                "name": "Ebusco 3.0 12 large battery",
+                "procurement_cost": 370000.0,
+                "useful_life": 12,
+                "cost_escalation": 0.025
+            },
+            {
+                "name": "Solaris Urbino 18 large battery",
+                "procurement_cost": 603000.0,
+                "useful_life": 12,
+                "cost_escalation": 0.025
+            },
+            {
+                "name": "Alexander Dennis Enviro500EV large battery",
+                "procurement_cost": 700000.0,
+                "useful_life": 12,
+                "cost_escalation": 0.025
+            },
+            {
+                "name": "Ebusco 3.0 12 small battery",
+                "procurement_cost": 370000.0,
+                "useful_life": 12,
+                "cost_escalation": 0.025
+            },
+            {
+                "name": "Solaris Urbino 18 small battery",
+                "procurement_cost": 603000.0,
+                "useful_life": 12,
+                "cost_escalation": 0.025
+            },
+            {
+                "name": "Alexander Dennis Enviro500EV small battery",
+                "procurement_cost": 700000.0,
+                "useful_life": 12,
+                "cost_escalation": 0.025
+            }
+        ],
+        "Battery": [
+            {
+                "name": "Ebusco 3.0 12",
+                "procurement_cost": 350.0,
+                "useful_life": 6,
+                "cost_escalation": -0.03
+            },
+            {
+                "name": "Solaris Urbino 18",
+                "procurement_cost": 350.0,
+                "useful_life": 6,
+                "cost_escalation": -0.03
+            },
+            {
+                "name": "Alexander Dennis Enviro500EV",
+                "procurement_cost": 350.0,
+                "useful_life": 6,
+                "cost_escalation": -0.03
+            },
+            {
+                "name": "Ebusco 3.0 12 large battery",
+                "procurement_cost": 300.0,
+                "useful_life": 6,
+                "cost_escalation": -0.03
+            },
+            {
+                "name": "Solaris Urbino 18 large battery",
+                "procurement_cost": 300.0,
+                "useful_life": 6,
+                "cost_escalation": -0.03
+            },
+            {
+                "name": "Alexander Dennis Enviro500EV large battery",
+                "procurement_cost": 300.0,
+                "useful_life": 6,
+                "cost_escalation": -0.03
+            },
+            {
+                "name": "Ebusco 3.0 12 small battery",
+                "procurement_cost": 400.0,
+                "useful_life": 6,
+                "cost_escalation": -0.03
+            },
+            {
+                "name": "Solaris Urbino 18 small battery",
+                "procurement_cost": 400.0,
+                "useful_life": 6,
+                "cost_escalation": -0.03
+            },
+            {
+                "name": "Alexander Dennis Enviro500EV small battery",
+                "procurement_cost": 400.0,
+                "useful_life": 6,
+                "cost_escalation": -0.03
+            }
+        ],
+        "Charging_Stations": [
+            {
+                "name": "OPPORTUNITY Station",
+                "procurement_cost": 500000.0,
+                "useful_life": 20,
+                "cost_escalation": 0.02
+            },
+            {
+                "name": "300 kw_Slot",
+                "procurement_cost": 275000.0,
+                "useful_life": 20,
+                "cost_escalation": 0.02
+            },
+            {
+                "name": "DEPOT Station",
+                "procurement_cost": 3400000.0,
+                "useful_life": 20,
+                "cost_escalation": 0.02
+            },
+            {
+                "name": "120 kw_Slot",
+                "procurement_cost": 100000.0,
+                "useful_life": 20,
+                "cost_escalation": 0.02
+            }
+        ],
+        "Discount_rate": [
+            0.025,
+            "% p.a."
+        ],
+        "Interest_rate": [
+            0.025,
+            "% p.a."
+        ],
+        "Project_duration": [
+            12,
+            "years"
+        ],
+        "Staff_cost": [
+            21.875,
+            "EUR/h"
+        ],
+        "Fuel_cost": [
+            0.175,
+            "EUR/kWh"
+        ],
+        "Maintenance_cost_vehicles": [
+            0.35,
+            "EUR/km"
+        ],
+        "Maintenance_cost_infrastructure": [
+            1000.0,
+            "EUR/slot"
+        ],
+        "Taxes": [
+            400.5,
+            "EUR/Bus p.a."
+        ],
+        "Insurance": [
+            300.0,
+            "EUR/Bus p.a."
+        ],
+        "General_cost_escalation": [
+            0.02,
+            "% p.a."
+        ],
+        "Wages_cost_escalation": [
+            0.02,
+            "% p.a."
+        ],
+        "Fuel_cost_escalation": [
+            0.175,
+            "% p.a."
+        ]
+    },
+    "Results": {
+        "Number_of_vehicles": 1208,
+        "Number of charging slots": {
+            "120 kw_Slot": 1189,
+            "300 kw_Slot": 78,
+            "Total": 1267
+        },
+        "Total_annual_driver_hours": [
+            2110131.396097637,
+            "h p.a."
+        ],
+        "Total_annual_fleet_mileage": [
+            39668243.631873906,
+            "km p.a."
+        ],
+        "Total_TCO_over_pd": [
+            2180561513.84,
+            "EUR"
+        ],
+        "Annual_TCO": [
+            181713459.49,
+            "EUR p.a."
+        ],
+        "Specific_TCO": [
+            4.58,
+            "EUR/km"
+        ],
+        "procurement_vehicle": 740089157.02,
+        "procurement_battery": 390014357.52000004,
+        "procurement_infra": 136117184.11,
+        "total_opex": 914340815.19
+    }
+}
