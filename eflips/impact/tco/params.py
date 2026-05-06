@@ -1,4 +1,5 @@
 import warnings
+from pathlib import Path
 from typing import List, Any, Optional, Union
 
 from eflips.model import (

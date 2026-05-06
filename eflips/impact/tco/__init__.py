@@ -1,10 +1,13 @@
+from datetime import datetime
 from eflips.impact.tco.calculation import TCOCalculator
 from eflips.impact.tco.params import (
     init_tco_parameters_from_json,
     init_tco_parameters,
 )
-from typing import Union, Optional, Any, Dict
+from typing import Union, Optional, Any, Dict, Tuple
 from eflips.model import Scenario
+
+from eflips.impact.utils import get_scaling_window, get_extraction_window
 import logging
 
 
@@ -12,6 +15,8 @@ def calculate_tco(
     scenario: Union[Scenario, int, Any],
     database_url: Optional[str] = None,
     use_revenue_km: bool = False,
+    extraction_window: Optional[Tuple[datetime, datetime]] = None,
+    scaling_window: Optional[Tuple[datetime, datetime]] = None,
 ) -> Dict[str, float]:
     """
     This function calculates the Total Cost of Ownership (TCO) for a given scenario and returns a dictionary
@@ -29,6 +34,8 @@ def calculate_tco(
         scenario,
         database_url=database_url,
         energy_consumption_mode="constant",
+        scaling_window=scaling_window,
+        extraction_window=extraction_window,
     )
     result = tco_calculator.calculate()
     return result.tco_by_type_per_km(use_revenue_km)

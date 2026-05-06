@@ -24,7 +24,7 @@ from eflips.impact.utils.extraction import (
     ScenarioSimData,
     StationSimData,
     _annual_scaling_factor,
-    extract_simulation_data,
+    extract_simulation_data, get_scaling_window, get_extraction_window,
 )
 from eflips.impact.tco.cost_items import (
     CapexItem,
@@ -333,8 +333,8 @@ class TCOCalculator:
     def __init__(
         self,
         scenario,
-        extraction_window: tuple[datetime, datetime],
-        scaling_window: tuple[datetime, datetime],
+        extraction_window: Optional[tuple[datetime.datetime, datetime.datetime]] = None,
+        scaling_window: Optional[tuple[datetime.datetime, datetime.datetime]] = None,
         database_url: Optional[str] = None,
         energy_consumption_mode: str = "constant",
         capex_items=None,
@@ -345,9 +345,12 @@ class TCOCalculator:
         Args:
             scenario: An eflips-model Scenario object or integer scenario id.
             extraction_window: ``(start, end)`` pair used to filter which
-                trips and events are included in cost calculations.
+                trips and events are included in cost calculations. If
+                ``None``, auto-detected from the earliest and latest event
+                times in the scenario.
             scaling_window: ``(start, end)`` pair used to compute the
-                annualisation factor applied to simulation-period values.
+                annualisation factor applied to simulation-period values. If
+                ``None``, auto-detected from trip departure times.
             database_url: SQLAlchemy database URL; falls back to
                 ``DATABASE_URL`` environment variable when omitted.
             energy_consumption_mode: ``"simulated"`` (use SoC data from DB)
@@ -355,12 +358,20 @@ class TCOCalculator:
             capex_items: Reserved; must be ``None`` (not yet implemented).
             opex_items: Reserved; must be ``None`` (not yet implemented).
         """
-        self._extraction_window = extraction_window
-        self._scaling_window = scaling_window
+
         with create_session(scenario, database_url) as (session, scenario):
             self.scenario = (
                 session.query(Scenario).filter(Scenario.id == scenario.id).one()
             )
+
+            if scaling_window is None:
+                self._scaling_window = get_scaling_window(session, scenario.id)
+            else:
+                self._scaling_window = scaling_window
+            if extraction_window is None:
+                self._extraction_window = get_extraction_window(session, scenario.id)
+            else:
+                self._extraction_window = extraction_window
 
             # Read eta_avail from scenario TCO parameters
             self.eta_avail: float = float(
@@ -371,8 +382,8 @@ class TCOCalculator:
             self.sim_data: ScenarioSimData = extract_simulation_data(
                 session,
                 int(self.scenario.id),
-                extraction_window,
-                scaling_window,
+                self._extraction_window,
+                self._scaling_window,
                 self.eta_avail,
             )
 
@@ -430,7 +441,7 @@ class TCOCalculator:
                     "Using your own list of dictonary then setting up list of capex items is not implemented yet. Please use the database to load the capex items."
                 )
             if opex_items is None:
-                self._load_opex_items_from_db(session, scaling_window)
+                self._load_opex_items_from_db(session)
             else:
                 raise NotImplementedError(
                     "Using your own list of dictonary then setting up list of opex items is not implemented yet. Please use the database to load the opex items."
@@ -603,7 +614,6 @@ class TCOCalculator:
     def _load_opex_items_from_db(
         self,
         session,
-        scaling_window: tuple[datetime, datetime],
     ) -> None:
         """Load all OPEX items from the database."""
 
@@ -617,7 +627,7 @@ class TCOCalculator:
 
         # Staff cost
         total_driver_hours = _calculate_total_driver_hours(
-            session, self.scenario, scaling_window, self._extraction_window
+            session, self.scenario, self._scaling_window, self._extraction_window
         )
         list_opex_items.append(
             OpexItem(
