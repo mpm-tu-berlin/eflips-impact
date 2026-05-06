@@ -1,9 +1,9 @@
-"""Low-level read-only simulation queries shared by ``tco/`` and ``lca/``.
+"""Read-only simulation queries and aggregated data containers shared by ``tco/`` and ``lca/``.
 
 All functions in this module are pure database reads and never mutate any
-row.  Domain aggregation (``ScenarioSimData``, ``CapexItem`` assembly) stays
-in the respective ``lca/`` and ``tco/`` modules; only the reusable query
-bricks live here.
+row.  Low-level query bricks and the shared aggregation containers
+(:class:`VehicleTypeSimData`, :class:`ScenarioSimData`) live here;
+domain-specific cost and impact assembly stays in ``tco/`` and ``lca/``.
 
 Import direction: this module imports only from ``eflips.model``,
 ``eflips.eval``, ``sqlalchemy``, and stdlib.
@@ -12,7 +12,7 @@ Import direction: this module imports only from ``eflips.model``,
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 from typing import Optional
 
@@ -22,6 +22,7 @@ from eflips.model import (
     Area,
     Depot,
     EnergySource,
+    Event,
     Rotation,
     Route,
     Station,
@@ -372,24 +373,23 @@ def get_extraction_window(
 ) -> tuple[datetime, datetime]:
     """Return the extraction window for a scenario.
 
-    Queries ``min(Trip.departure_time)`` and ``max(Trip.arrival_time)`` for
-    the scenario.  The result is the tightest window that contains all trip
-    data and is suitable to pass as ``extraction_window`` to
-    :func:`extract_vehicle_and_revenue_kilometers` and related functions.
+    Queries ``min(Event.time_start)`` and ``max(Event.time_end)`` across
+    all events in the scenario.  This spans the full simulation including
+    depot charging and standby periods beyond the first/last trip times.
 
     Args:
         session: SQLAlchemy session.
         scenario_id: Scenario to query.
 
     Returns:
-        ``(min_departure_time, max_arrival_time)``.
+        ``(min_time_start, max_time_end)`` across all events.
 
     Raises:
-        ValueError: If the scenario contains no trips.
+        ValueError: If the scenario contains no events.
     """
     row = session.execute(
-        select(func.min(Trip.departure_time), func.max(Trip.arrival_time)).where(
-            Trip.scenario_id == scenario_id
+        select(func.min(Event.time_start), func.max(Event.time_end)).where(
+            Event.scenario_id == scenario_id
         )
     ).one()
 
@@ -397,7 +397,7 @@ def get_extraction_window(
     latest: Optional[datetime] = row[1]
 
     if earliest is None or latest is None:
-        raise ValueError(f"Scenario {scenario_id} contains no trips.")
+        raise ValueError(f"Scenario {scenario_id} contains no events.")
 
     return earliest, latest
 

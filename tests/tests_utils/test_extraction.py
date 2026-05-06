@@ -164,31 +164,30 @@ def test_extraction_window_start_before_end(db_session: Session) -> None:
     assert start < end
 
 
-def test_extraction_window_start_is_min_departure(db_session: Session) -> None:
+def test_extraction_window_start_is_min_event_time(db_session: Session) -> None:
     start, _ = get_extraction_window(db_session, SCENARIO_ID)
-    # start must equal min(departure_time): no trip departs before it
-    from eflips.model import Trip
+    from eflips.model import Event
     from sqlalchemy import func, select
 
-    min_dep = db_session.execute(
-        select(func.min(Trip.departure_time)).where(Trip.scenario_id == SCENARIO_ID)
+    min_ts = db_session.execute(
+        select(func.min(Event.time_start)).where(Event.scenario_id == SCENARIO_ID)
     ).scalar()
-    assert start == min_dep
+    assert start == min_ts
 
 
-def test_extraction_window_end_is_max_arrival(db_session: Session) -> None:
+def test_extraction_window_end_is_max_event_time(db_session: Session) -> None:
     _, end = get_extraction_window(db_session, SCENARIO_ID)
-    from eflips.model import Trip
+    from eflips.model import Event
     from sqlalchemy import func, select
 
-    max_arr = db_session.execute(
-        select(func.max(Trip.arrival_time)).where(Trip.scenario_id == SCENARIO_ID)
+    max_te = db_session.execute(
+        select(func.max(Event.time_end)).where(Event.scenario_id == SCENARIO_ID)
     ).scalar()
-    assert end == max_arr
+    assert end == max_te
 
 
-def test_extraction_window_no_trips_raises(db_session: Session) -> None:
-    with pytest.raises(ValueError, match="contains no trips"):
+def test_extraction_window_no_events_raises(db_session: Session) -> None:
+    with pytest.raises(ValueError, match="contains no events"):
         get_extraction_window(db_session, 999)
 
 
