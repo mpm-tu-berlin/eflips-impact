@@ -199,8 +199,8 @@ class OpenLcaData:
     beb_maintenance_reduction_factor: float
     power_unit_rated_power_kw: float
     transformer_ref_power_kw: float
-    diesel_motor_mass_kg: float = 1900.0
-    efficiency_mv_to_lv: float = 0.99
+    diesel_motor_mass_kg: float
+    efficiency_mv_to_lv: float
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-compatible dict.
 
@@ -223,39 +223,6 @@ class OpenLcaData:
             else:
                 raise TypeError(f"Unsupported field type {hint!r} for field '{f.name}'")
         return result
-
-    @classmethod
-    def from_dict(cls, raw: dict[str, Any]) -> OpenLcaData:
-        """Deserialize from a dict.
-
-        Dispatches by resolved type annotation. Scalar ``float`` fields
-        fall back to dataclass defaults when absent from *raw*.
-
-        Args:
-            raw: A dict as produced by ``to_dict()``.
-
-        Returns:
-            An ``OpenLcaData`` instance.
-        """
-        hints = get_type_hints(cls)
-        kwargs: dict[str, Any] = {}
-        for f in dataclasses.fields(cls):
-            hint = hints[f.name]
-            if hint is str:
-                kwargs[f.name] = str(raw[f.name])
-            elif hint is float:
-                default = f.default
-                if default is not dataclasses.MISSING:
-                    kwargs[f.name] = float(raw.get(f.name, default))
-                else:
-                    kwargs[f.name] = float(raw[f.name])
-            elif hint is DefaultImpactVector:
-                kwargs[f.name] = DefaultImpactVector.from_dict(raw[f.name])
-            elif hint is YearSeries:
-                kwargs[f.name] = YearSeries.from_dict(raw[f.name])
-            else:
-                raise TypeError(f"Unsupported field type {hint!r} for field '{f.name}'")
-        return cls(**kwargs)
 
 
 

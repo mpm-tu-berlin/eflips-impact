@@ -183,64 +183,6 @@ class TestYearSeries:
 class TestOpenLcaDataRoundtrip:
     """Tests for ``OpenLcaData`` serialization."""
 
-    def test_dict_roundtrip(self) -> None:
-        """to_dict/from_dict roundtrip preserves all fields."""
-        original = _make_open_lca_data()
-        restored = OpenLcaData.from_dict(original.to_dict())
-
-        assert restored.ecoinvent_version == original.ecoinvent_version
-        assert restored.lcia_method_set == original.lcia_method_set
-        assert restored.description == original.description
-        assert restored.created_at == original.created_at
-
-        assert restored.chassis_per_kg.gwp == pytest.approx(original.chassis_per_kg.gwp)
-        assert restored.electric_motor_per_kg.gwp == pytest.approx(
-            original.electric_motor_per_kg.gwp
-        )
-        assert restored.diesel_motor_per_unit.gwp == pytest.approx(
-            original.diesel_motor_per_unit.gwp
-        )
-        assert restored.lfp_battery_per_kg.gwp == pytest.approx(
-            original.lfp_battery_per_kg.gwp
-        )
-        assert restored.nmc_battery_per_kg.gwp == pytest.approx(
-            original.nmc_battery_per_kg.gwp
-        )
-        assert restored.electricity_per_kwh.at_year(2025).gwp == pytest.approx(0.4)
-        assert restored.electricity_per_kwh.at_year(2030).gwp == pytest.approx(0.3)
-        assert restored.diesel_per_kg.gwp == pytest.approx(original.diesel_per_kg.gwp)
-        assert restored.maintenance_iceb_per_year.gwp == pytest.approx(
-            original.maintenance_iceb_per_year.gwp
-        )
-        assert restored.maintenance_beb_per_year.gwp == pytest.approx(
-            original.maintenance_beb_per_year.gwp
-        )
-        assert restored.control_unit.gwp == pytest.approx(original.control_unit.gwp)
-        assert restored.power_unit.gwp == pytest.approx(original.power_unit.gwp)
-        assert restored.user_unit.gwp == pytest.approx(original.user_unit.gwp)
-        assert restored.transformer.gwp == pytest.approx(original.transformer.gwp)
-        assert restored.concrete_per_m3.gwp == pytest.approx(
-            original.concrete_per_m3.gwp
-        )
-
-        assert restored.diesel_motor_mass_kg == pytest.approx(1900.0)
-        assert restored.efficiency_mv_to_lv == pytest.approx(0.99)
-        assert restored.efficiency_lv_ac_to_dc == pytest.approx(0.95)
-        assert restored.battery_lifetime_years == pytest.approx(8.0)
-        assert restored.beb_maintenance_reduction_factor == pytest.approx(0.75)
-        assert restored.power_unit_rated_power_kw == pytest.approx(150.0)
-        assert restored.transformer_ref_power_kw == pytest.approx(315.0)
-
-    def test_scalar_defaults_when_missing(self) -> None:
-        """Scalar fields fall back to defaults when absent from dict."""
-        original = _make_open_lca_data()
-        d = original.to_dict()
-        # Remove optional scalar fields
-        del d["diesel_motor_mass_kg"]
-        del d["efficiency_mv_to_lv"]
-        restored = OpenLcaData.from_dict(d)
-        assert restored.diesel_motor_mass_kg == pytest.approx(1900.0)
-        assert restored.efficiency_mv_to_lv == pytest.approx(0.99)
 
 
 # ===================================================================
