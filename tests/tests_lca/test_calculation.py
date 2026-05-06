@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import pytest
-from sqlalchemy.orm import Session
 from unittest.mock import MagicMock
 
-from eflips.model import BatteryType, EnergySource, VehicleType
+from eflips.model import BatteryType, EnergySource, Scenario, VehicleType
 
 from eflips.impact.lca.calculation import (
     amortize,
@@ -23,12 +22,6 @@ from eflips.impact.lca.calculation import (
 )
 from eflips.impact.lca.dataclasses import BatteryTypeLcaParams, VehicleTypeLcaParams
 from eflips.impact.lca.util import DefaultImpactVector
-
-from datetime import datetime, timezone
-
-SCENARIO_ID = 1
-SIM_START = datetime(2025, 6, 17, 0, 0, 0, tzinfo=timezone.utc)
-SIM_END = datetime(2025, 6, 19, 0, 0, 0, tzinfo=timezone.utc)
 
 # ---------------------------------------------------------------------------
 # Pure formula helpers
@@ -247,24 +240,21 @@ def test_amortize_production_diesel() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_calculate_lca_runs(db_session: Session) -> None:
-    window = (SIM_START, SIM_END)
-    result = calculate_lca(db_session, SCENARIO_ID, window, window)
+def test_calculate_lca_runs(scenario_obj: Scenario) -> None:
+    result = calculate_lca(scenario_obj)
     assert result is not None
 
 
-def test_calculate_lca_vehicle_types_in_result(db_session: Session) -> None:
-    window = (SIM_START, SIM_END)
-    result = calculate_lca(db_session, SCENARIO_ID, window, window)
+def test_calculate_lca_vehicle_types_in_result(scenario_obj: Scenario) -> None:
+    result = calculate_lca(scenario_obj)
     assert 12 in result.production
     assert 13 in result.production
     assert 12 in result.use_phase
     assert 13 in result.use_phase
 
 
-def test_calculate_lca_positive_gwp(db_session: Session) -> None:
-    window = (SIM_START, SIM_END)
-    result = calculate_lca(db_session, SCENARIO_ID, window, window)
+def test_calculate_lca_positive_gwp(scenario_obj: Scenario) -> None:
+    result = calculate_lca(scenario_obj)
     assert result.total.gwp > 0.0
     for iv in result.production.values():
         assert iv.gwp > 0.0
@@ -273,10 +263,9 @@ def test_calculate_lca_positive_gwp(db_session: Session) -> None:
     assert result.infrastructure.gwp > 0.0
 
 
-def test_calculate_lca_total_correct_shared_denominator(db_session: Session) -> None:
+def test_calculate_lca_total_correct_shared_denominator(scenario_obj: Scenario) -> None:
     """Total uses a shared Nwkm denominator, not a sum of per-type results."""
-    window = (SIM_START, SIM_END)
-    result = calculate_lca(db_session, SCENARIO_ID, window, window)
+    result = calculate_lca(scenario_obj)
     total_nwkm = sum(result.revenue_km.values())
     # Reconstruct fleet-level numerators from per-type per-Nwkm values
     prod_fleet_gwp = sum(
@@ -291,10 +280,9 @@ def test_calculate_lca_total_correct_shared_denominator(db_session: Session) -> 
     assert result.total.gwp == pytest.approx(expected_total_gwp, rel=1e-6)
 
 
-def test_calculate_lca_use_phase_dominates_production(db_session: Session) -> None:
+def test_calculate_lca_use_phase_dominates_production(scenario_obj: Scenario) -> None:
     """For BEBs, energy use should dominate over production emissions."""
-    window = (SIM_START, SIM_END)
-    result = calculate_lca(db_session, SCENARIO_ID, window, window)
+    result = calculate_lca(scenario_obj)
     total_prod = sum(iv.gwp for iv in result.production.values())
     total_use = sum(iv.gwp for iv in result.use_phase.values())
     assert total_use > total_prod

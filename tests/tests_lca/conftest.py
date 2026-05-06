@@ -29,6 +29,7 @@ from eflips.model import (
     BatteryType,
     ChargingPointType,
     EnergySource,
+    Scenario,
     Station,
     VehicleType,
 )
@@ -241,3 +242,13 @@ def db_session(db_engine) -> Generator[Session, None, None]:  # type: ignore[typ
 
         session.commit()
         yield session
+
+
+@pytest.fixture(scope="session")
+def scenario_obj(db_session: Session) -> Scenario:
+    """Session-scoped Scenario ORM object bound to db_session.
+
+    Returns:
+        The ``Scenario`` with id ``SCENARIO_ID`` from the test database.
+    """
+    return db_session.query(Scenario).filter(Scenario.id == SCENARIO_ID).one()

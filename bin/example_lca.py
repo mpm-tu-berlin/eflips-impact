@@ -18,15 +18,13 @@ below for convenience during development.
 
 from __future__ import annotations
 
-import importlib.resources
-from datetime import datetime, timezone
 from pathlib import Path
-
-from sqlalchemy.orm import Session
 
 import eflips.model
 from eflips.impact.lca import calculate_lca, init_lca_params
 from eflips.model import VehicleType
+from eflips.impact.utils import init_fleet
+from sqlalchemy.orm import Session
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -35,25 +33,24 @@ from eflips.model import VehicleType
 DATABASE_URL = "sqlite:////home/shuyao/PycharmProjects/eflips-data/Simulation_term.db"
 SCENARIO_ID = 1
 
-# Simulation extraction window — adjust to match the actual simulation period.
-EXTRACTION_START = datetime(2024, 1, 1, tzinfo=timezone.utc)
-EXTRACTION_END = datetime(2024, 1, 8, tzinfo=timezone.utc)
-
-# Scaling window used to annualise the extracted metrics.
-SCALING_START = datetime(2024, 1, 1, tzinfo=timezone.utc)
-SCALING_END = datetime(2024, 12, 31, tzinfo=timezone.utc)
-
 # Path to the bundled example preset files.
 _DEFAULTS = Path(__file__).parent.parent / "eflips" / "impact" / "defaults" / "example"
 LCA_JSON = _DEFAULTS / "lca.json"
 LCA_OVERRIDES_JSON = _DEFAULTS / "lca_overrides.json"
 
 
-# ---------------------------------------------------------------------------
-# Step 1 + 2: populate lca_params via init_lca_params
-# ---------------------------------------------------------------------------
 
-print("Step 1+2: populating lca_params from JSON files ...")
+# ---------------------------------------------------------------------------
+# Step 1: Init fleet
+# ---------------------------------------------------------------------------
+print("Step 1: Init fleet ...")
+init_fleet(scenario=SCENARIO_ID, filepath=_DEFAULTS / "fleet.json",
+           delete_existing_data=True, database_url=DATABASE_URL)
+
+
+# ---------------------------------------------------------------------------
+# Step 2: populate lca_params via init_lca_params
+# ---------------------------------------------------------------------------
 init_lca_params(
     scenario=SCENARIO_ID,
     lca_json_path=LCA_JSON,
@@ -61,22 +58,15 @@ init_lca_params(
     database_url=DATABASE_URL,
 )
 print("  lca_params written to DB.\n")
-
-
 # ---------------------------------------------------------------------------
 # Step 3: calculate LCA
 # ---------------------------------------------------------------------------
 
+print("Step 3: running calculate_lca ...")
+result = calculate_lca(scenario=SCENARIO_ID, database_url=DATABASE_URL)
+
 engine = eflips.model.create_engine(DATABASE_URL)
 with Session(engine) as session:
-    print("Step 3: running calculate_lca ...")
-    result = calculate_lca(
-        session=session,
-        scenario_id=SCENARIO_ID,
-        extraction_window=(EXTRACTION_START, EXTRACTION_END),
-        scaling_window=(SCALING_START, SCALING_END),
-    )
-
     # ---------------------------------------------------------------------------
     # Step 4: print results
     # ---------------------------------------------------------------------------
