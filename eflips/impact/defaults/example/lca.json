@@ -4,7 +4,8 @@
     "ecoinvent_version": "3.9.1",
     "lcia_method_set": "EF 3.1",
     "description": "Filled strictly from bus_results.json",
-    "created_at": "2026-05-05T00:00:00Z"
+    "created_at": "2026-05-05T00:00:00Z",
+    "eta_avail": 0.9
   },
   "vehicle_production": {
     "chassis_per_kg": {

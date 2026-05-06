@@ -69,6 +69,7 @@ def _make_open_lca_data() -> OpenLcaData:
         beb_maintenance_reduction_factor=0.75,
         power_unit_rated_power_kw=150.0,
         transformer_ref_power_kw=315.0,
+        eta_avail=0.9,
     )
 
 

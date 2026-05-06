@@ -169,6 +169,8 @@ class OpenLcaData:
         transformer_ref_power_kw: Reference power of the transformer LCA
             dataset in kW; used as the denominator in the 0.8-exponent
             scaling law.
+        eta_avail: Technical availability factor used to scale n_ready to
+            total fleet size (``n_total = ceil(n_ready / eta_avail)``).
     """
 
     # Metadata
@@ -201,6 +203,7 @@ class OpenLcaData:
     transformer_ref_power_kw: float
     diesel_motor_mass_kg: float
     efficiency_mv_to_lv: float
+    eta_avail: float
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-compatible dict.
 
@@ -335,6 +338,7 @@ class OpenLcaData:
             ),
             transformer_ref_power_kw=float(ci["transformer"]["ref_power_kw"]),
             concrete_per_m3=_iv(ci["concrete_per_m3"]),
+            eta_avail=float(meta["eta_avail"]),
         )
 
     def make_vehicle_type_lca_params_beb(
