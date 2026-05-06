@@ -15,10 +15,13 @@ argument into ``(session, Scenario)``.
 
 from eflips.impact.utils.extraction import (
     AreaSimData,
+    ScenarioSimData,
     StationSimData,
+    VehicleTypeSimData,
     _annual_scaling_factor,
     _simulation_start_and_end,
     extract_area_peaks,
+    extract_simulation_data,
     extract_station_peaks,
     extract_vehicle_and_revenue_kilometers,
     extract_vehicle_count_per_type,
@@ -30,11 +33,14 @@ from eflips.impact.utils.session import create_session
 
 __all__ = [
     "AreaSimData",
+    "ScenarioSimData",
     "StationSimData",
+    "VehicleTypeSimData",
     "_annual_scaling_factor",
     "_simulation_start_and_end",
     "create_session",
     "extract_area_peaks",
+    "extract_simulation_data",
     "extract_station_peaks",
     "extract_vehicle_and_revenue_kilometers",
     "extract_vehicle_count_per_type",

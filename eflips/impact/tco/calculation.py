@@ -10,14 +10,12 @@ from eflips.model import (
 
 logger = logging.getLogger(__name__)
 
-from eflips.impact.tco.data_queries import (
-    load_capex_items_vehicle,
-    load_capex_items_battery,
-    load_capex_items_infrastructure,
-    get_annual_fleet_mileage,
-    calculate_total_driver_hours,
-    calc_energy_consumption_simulated,
-    get_mileage_per_vehicle_type,
+from eflips.impact.utils.extraction import (
+    AreaSimData,
+    ScenarioSimData,
+    StationSimData,
+    _annual_scaling_factor,
+    extract_simulation_data,
 )
 
 from eflips.impact.tco.cost_items import (
@@ -72,26 +70,43 @@ class TCOCalculator:
                 session.query(Scenario).filter(Scenario.id == scenario.id).one()
             )
 
-            vehicle_km, revenue_km = get_annual_fleet_mileage(
-                session, self.scenario, extraction_window, scaling_window
+            # Read eta_avail from scenario TCO parameters
+            self.eta_avail: float = float(
+                self.scenario.tco_parameters.get("eta_avail")
             )
-            self.annual_vehicle_mileage = vehicle_km
-            self.annual_revenue_mileage = revenue_km
+
+            # Build SimData (vehicle-km, revenue-km, fleet counts, area/station peaks)
+            self.sim_data: ScenarioSimData = extract_simulation_data(
+                session,
+                int(self.scenario.id),
+                extraction_window,
+                scaling_window,
+                self.eta_avail,
+            )
+
+            # Fleet totals derived directly from SimData — no separate DB query
+            self.annual_vehicle_mileage: float = sum(
+                vd.annual_vehicle_kilometers
+                for vd in self.sim_data.vehicle_type_data.values()
+            )
+            self.annual_revenue_mileage: float = sum(
+                vd.annual_revenue_kilometers
+                for vd in self.sim_data.vehicle_type_data.values()
+            )
             self.energy_consumption_mode = energy_consumption_mode
 
-            # Build const_consumption for all vehicle types
+            # Query all VehicleTypes once; set missing energy_source in the same pass
             vehicle_types = (
                 session.query(VehicleType)
                 .filter(VehicleType.scenario_id == self.scenario.id)
                 .all()
             )
-            for vt in vehicle_types:
-                if vt.energy_source is None:
-                    vt.energy_source = EnergySource.BATTERY_ELECTRIC
-                    session.add(vt)
-            session.flush()
 
+            self.vehicle_types: list[VehicleType] = vehicle_types
+
+            # Build const_consumption and mileage_by_energy_source in one loop
             const_consumption: dict[VehicleType, float] = {}
+            mileage_by_energy_source: dict[str, float] = {}
             for vt in vehicle_types:
                 params = vt.tco_parameters or {}
                 if vt.energy_source == EnergySource.DIESEL:
@@ -105,24 +120,19 @@ class TCOCalculator:
                     )
                     consumption = 0.0
                 const_consumption[vt] = consumption
-            self.const_consumption = const_consumption
 
-            # Mileage per vehicle type and derived mileage by energy source
-            self.mileage_per_vt = get_mileage_per_vehicle_type(
-                session, self.scenario, extraction_window, scaling_window
-            )
-            mileage_by_energy_source: dict[str, float] = {}
-            for vt, mileage in self.mileage_per_vt.items():
-                # TODO what if we dont have an energy source? Should we just ignore it or put it in an "unknown" category?
-                key = vt.energy_source.name
-                mileage_by_energy_source[key] = (
-                    mileage_by_energy_source.get(key, 0.0) + mileage
-                )
+                vd = self.sim_data.vehicle_type_data.get(int(vt.id))
+                if vd is not None:
+                    key = vt.energy_source.name
+                    mileage_by_energy_source[key] = (
+                        mileage_by_energy_source.get(key, 0.0)
+                        + vd.annual_vehicle_kilometers
+                    )
+            self.const_consumption = const_consumption
             self.mileage_by_energy_source = mileage_by_energy_source
 
             if capex_items is None:
-                self._load_capex_items_from_db(session, extraction_window)
-
+                self._load_capex_items_from_db(session)
             else:
                 raise NotImplementedError(
                     "Using your own list of dictonary then setting up list of capex items is not implemented yet. Please use the database to load the capex items."
@@ -328,18 +338,17 @@ class TCOCalculator:
         # Energy cost
         match self.energy_consumption_mode:
             case "constant":
-                electric_consumption = sum(
-                    self.const_consumption.get(vt, 0.0)
-                    * self.mileage_per_vt.get(vt, 0.0)
-                    for vt in self.const_consumption
-                    if vt.energy_source == EnergySource.BATTERY_ELECTRIC
-                )
-                diesel_consumption = sum(
-                    self.const_consumption.get(vt, 0.0)
-                    * self.mileage_per_vt.get(vt, 0.0)
-                    for vt in self.const_consumption
-                    if vt.energy_source == EnergySource.DIESEL
-                )
+                electric_consumption = 0.0
+                diesel_consumption = 0.0
+                for vt in self.vehicle_types:
+                    vd = self.sim_data.vehicle_type_data.get(int(vt.id))
+                    if vd is None:
+                        continue
+                    c = self.const_consumption.get(vt, 0.0) * vd.annual_vehicle_kilometers
+                    if vt.energy_source == EnergySource.BATTERY_ELECTRIC:
+                        electric_consumption += c
+                    elif vt.energy_source == EnergySource.DIESEL:
+                        diesel_consumption += c
             case "simulated":
                 electric_consumption = calc_energy_consumption_simulated(
                     session, self.scenario, scaling_window

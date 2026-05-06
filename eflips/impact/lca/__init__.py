@@ -12,7 +12,7 @@ from eflips.impact.lca.dataclasses import (
     LcaResult,
     VehicleTypeLcaParams,
 )
-from eflips.impact.lca.extraction import (
+from eflips.impact.utils.extraction import (
     AreaSimData,
     ScenarioSimData,
     StationSimData,

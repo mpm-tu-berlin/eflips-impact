@@ -1,4 +1,4 @@
-"""Tests for eflips.lca.extraction."""
+"""Tests for eflips.impact.utils.extraction (SimData containers)."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy.orm import Session
 
-from eflips.impact.lca.extraction import (
+from eflips.impact.utils.extraction import (
     ScenarioSimData,
     extract_simulation_data,
 )
