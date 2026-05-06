@@ -1,5 +1,5 @@
-from eflips.impact.tco.tco_calculator import TCOCalculator
-from eflips.impact.tco.data_queries import (
+from eflips.impact.tco.calculation import TCOCalculator
+from eflips.impact.tco.params import (
     init_tco_parameters_from_json,
     init_tco_parameters,
 )

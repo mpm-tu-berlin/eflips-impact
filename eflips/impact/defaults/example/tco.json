@@ -16,7 +16,8 @@
       "insurance": 0.02
     },
     "insurance": 3000.0,
-    "taxes": 0.0
+    "taxes": 0.0,
+    "eta_avail": 0.9
   },
   "vehicle_types": [
     {

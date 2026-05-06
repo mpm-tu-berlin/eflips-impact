@@ -175,6 +175,7 @@ class ScenarioTCOParameter:
     cost_escalation_rate: Dict[str, float]
     insurance: float
     taxes: float
+    eta_avail: float = 0.9
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)

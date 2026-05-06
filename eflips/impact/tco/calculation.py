@@ -1,11 +1,20 @@
+import datetime
 import logging
-from datetime import datetime
-from typing import Optional
+import math
+from typing import List, Optional
+
+from sqlalchemy import or_, and_, distinct, func
 
 from eflips.model import (
-    Scenario,
-    VehicleType,
+    Area,
+    BatteryType,
+    Depot,
     EnergySource,
+    Event,
+    EventType,
+    Scenario,
+    Station,
+    VehicleType,
 )
 
 logger = logging.getLogger(__name__)
@@ -17,7 +26,6 @@ from eflips.impact.utils.extraction import (
     _annual_scaling_factor,
     extract_simulation_data,
 )
-
 from eflips.impact.tco.cost_items import (
     CapexItem,
     OpexItem,
@@ -25,10 +33,295 @@ from eflips.impact.tco.cost_items import (
     OpexItemType,
     net_present_value,
 )
-from eflips.impact.tco.tco_parameter_config import TCOResult
+from eflips.impact.tco.dataclasses import TCOResult
 from eflips.impact.utils import create_session
 
 import pandas as pd
+
+
+def _load_capex_items_vehicle(
+    vehicle_types: List[VehicleType],
+    sim_data: ScenarioSimData,
+    eta_avail: float,
+) -> List[CapexItem]:
+    """Build vehicle CAPEX items from pre-loaded vehicle types and SimData.
+
+    Args:
+        vehicle_types: All ``VehicleType`` ORM objects for the scenario.
+        sim_data: Pre-built scenario simulation data.
+        eta_avail: Technical availability factor; fleet size =
+            ``ceil(n_ready / eta_avail)``.
+
+    Returns:
+        List of :class:`CapexItem` with one entry per vehicle type.
+    """
+    list_vt_asset = []
+    for vt in vehicle_types:
+        vd = sim_data.vehicle_type_data.get(int(vt.id))
+        if vd is None:
+            continue
+        count = math.ceil(vd.n_ready / eta_avail)
+        fuel_suffix = "(Diesel)" if vt.energy_source == EnergySource.DIESEL else "(Electric)"
+        tco_parameters = vt.tco_parameters or {}
+        asset = CapexItem(
+            name=f"{vt.name} {fuel_suffix}",
+            type=CapexItemType.VEHICLE,
+            useful_life=tco_parameters["useful_life"],
+            procurement_cost=tco_parameters["procurement_cost"],
+            cost_escalation=tco_parameters["cost_escalation"],
+            quantity=count,
+        )
+        list_vt_asset.append(asset)
+    return list_vt_asset
+
+
+def _load_capex_items_battery(
+    session,
+    vehicle_types: List[VehicleType],
+    sim_data: ScenarioSimData,
+    eta_avail: float,
+) -> List[CapexItem]:
+    """Build battery CAPEX items from pre-loaded vehicle types and SimData.
+
+    Args:
+        session: SQLAlchemy session (used to query ``BatteryType`` by id).
+        vehicle_types: All ``VehicleType`` ORM objects for the scenario.
+        sim_data: Pre-built scenario simulation data.
+        eta_avail: Technical availability factor; battery count per type =
+            ``ceil(n_ready / eta_avail)``.
+
+    Returns:
+        List of :class:`CapexItem` with one entry per BEB vehicle type that
+        has a battery assigned.
+    """
+    list_battery_asset = []
+    for vt in vehicle_types:
+        if vt.energy_source != EnergySource.BATTERY_ELECTRIC:
+            continue
+        if vt.battery_type_id is None:
+            continue
+        vd = sim_data.vehicle_type_data.get(int(vt.id))
+        if vd is None:
+            continue
+        count = math.ceil(vd.n_ready / eta_avail)
+        battery_type = session.get(BatteryType, vt.battery_type_id)
+        if battery_type is None:
+            continue
+        tco_battery = battery_type.tco_parameters or {}
+        asset = CapexItem(
+            name="Battery type " + str(vt.battery_type_id),
+            type=CapexItemType.BATTERY,
+            useful_life=tco_battery["useful_life"],
+            procurement_cost=tco_battery["procurement_cost"] * vt.battery_capacity,
+            cost_escalation=tco_battery["cost_escalation"],
+            quantity=count,
+        )
+        list_battery_asset.append(asset)
+    return list_battery_asset
+
+
+def _load_capex_items_infrastructure(
+    session,
+    scenario,
+    area_data: dict[int, AreaSimData],
+    station_data: dict[int, StationSimData],
+):
+    """Calculate the number of charging infrastructure items required.
+
+    Args:
+        session: A Session object.
+        scenario: A Scenario object.
+        area_data: Pre-built per-area peak data from :class:`ScenarioSimData`.
+        station_data: Pre-built per-station peak data from :class:`ScenarioSimData`.
+
+    Returns:
+        A tuple ``(list_of_capex_items, total_slots)``.
+    """
+    area_peaks: dict[int, AreaSimData] = area_data
+    station_peaks: dict[int, StationSimData] = station_data
+
+    charging_point_types = scenario.charging_point_types
+    list_asset_charging_infra = []
+    total_slots = 0
+
+    for charging_point_type in charging_point_types:
+        total_count = 0
+        if charging_point_type.areas is not None:
+            for area in charging_point_type.areas:
+                sim_data = area_peaks.get(area.id)
+                if sim_data is not None:
+                    total_count += sim_data.peak_simultaneous_vehicles
+
+        if charging_point_type.stations is not None:
+            for station in charging_point_type.stations:
+                sim_data_st = station_peaks.get(station.id)
+                if sim_data_st is not None:
+                    total_count += sim_data_st.peak_simultaneous_vehicles
+
+        if total_count != 0:
+            total_slots += total_count
+            asset_charging_point_type = CapexItem(
+                name=charging_point_type.name,
+                type=CapexItemType.INFRASTRUCTURE,
+                useful_life=charging_point_type.tco_parameters["useful_life"],
+                procurement_cost=charging_point_type.tco_parameters["procurement_cost"],
+                cost_escalation=charging_point_type.tco_parameters["cost_escalation"],
+                quantity=int(total_count),
+            )
+            list_asset_charging_infra.append(asset_charging_point_type)
+
+    depots = (
+        session.query(
+            func.count(func.distinct(Station.id)),
+            Station.tco_parameters,
+        )
+        .join(Event, Event.station_id == Station.id)
+        .filter(
+            Station.scenario_id == scenario.id,
+            or_(
+                Event.event_type == "CHARGING_DEPOT",
+            ),
+        )
+        .group_by(Station.tco_parameters)
+        .all()
+    )
+
+    stations = (
+        session.query(
+            func.count(func.distinct(Station.id)),
+            Station.tco_parameters,
+        )
+        .join(Event, Event.station_id == Station.id)
+        .filter(
+            Station.scenario_id == scenario.id,
+            or_(
+                Event.event_type == "CHARGING_OPPORTUNITY",
+            ),
+        )
+        .group_by(Station.tco_parameters)
+        .all()
+    )
+
+    for depot_count, tco_parameters in depots:
+        asset_depot = CapexItem(
+            name="Depot",
+            type=CapexItemType.INFRASTRUCTURE,
+            useful_life=tco_parameters["useful_life"],
+            procurement_cost=tco_parameters["procurement_cost"],
+            cost_escalation=tco_parameters["cost_escalation"],
+            quantity=int(depot_count),
+        )
+        list_asset_charging_infra.append(asset_depot)
+
+    for station_count, tco_parameters in stations:
+        asset_station = CapexItem(
+            name="Station",
+            type=CapexItemType.INFRASTRUCTURE,
+            useful_life=tco_parameters["useful_life"],
+            procurement_cost=tco_parameters["procurement_cost"],
+            cost_escalation=tco_parameters["cost_escalation"],
+            quantity=int(station_count),
+        )
+        list_asset_charging_infra.append(asset_station)
+
+    return list_asset_charging_infra, total_slots
+
+
+def _calc_energy_consumption_simulated(
+    session,
+    scenario,
+    scaling_window: tuple[datetime.datetime, datetime.datetime],
+) -> float:
+    """Return total annual energy consumption from simulation SoC data.
+
+    Args:
+        session: A session object.
+        scenario: A scenario object.
+        scaling_window: ``(start, end)`` pair used to compute the
+            annualisation factor.
+
+    Returns:
+        Total annual energy consumption in kWh.
+    """
+    result = (
+        session.query(
+            func.sum(
+                (Event.soc_end - Event.soc_start)
+                * VehicleType.battery_capacity
+                / VehicleType.charging_efficiency
+            )
+        )
+        .select_from(Event)
+        .join(VehicleType, Event.vehicle_type_id == VehicleType.id)
+        .filter(
+            or_(
+                Event.event_type == "CHARGING_DEPOT",
+                Event.event_type == "CHARGING_OPPORTUNITY",
+            ),
+            Event.scenario_id == scenario.id,
+            VehicleType.energy_source == EnergySource.BATTERY_ELECTRIC,
+        )
+        .one()
+    )
+    return result[0] * _annual_scaling_factor(scaling_window)
+
+
+def _calculate_total_driver_hours(
+    session,
+    scenario,
+    scaling_window: tuple[datetime.datetime, datetime.datetime],
+    extraction_window: tuple[datetime.datetime, datetime.datetime],
+    annual_hours_per_driver: int = 1600,
+    buffer: float = 0.1,
+) -> float:
+    """Return total annual driver hours required for the scenario.
+
+    Args:
+        session: A session object.
+        scenario: A scenario object.
+        scaling_window: ``(start, end)`` pair used to compute the
+            annualisation factor.
+        extraction_window: ``(start, end)`` pair used to filter which events
+            are included in the driver hours calculation.
+        annual_hours_per_driver: Contractual hours per driver per year.
+        buffer: Fractional overhead for absences and reliefs.
+
+    Returns:
+        Total annual driver hours (including buffer), rounded up to a full
+        driver allocation.
+    """
+    extract_start, extract_end = extraction_window
+    driver_hours = datetime.timedelta(seconds=0)
+    driving_and_opcharge_events = (
+        session.query(Event)
+        .filter(
+            Event.scenario_id == scenario.id,
+            Event.time_start >= extract_start,
+            Event.time_end <= extract_end,
+            or_(
+                Event.event_type == EventType.DRIVING,
+                Event.event_type == EventType.CHARGING_OPPORTUNITY,
+                and_(
+                    Event.event_type == EventType.STANDBY_DEPARTURE,
+                    Event.area_id.is_(None),
+                ),
+                and_(Event.event_type == EventType.STANDBY, Event.area_id.is_(None)),
+            ),
+        )
+        .all()
+    )
+
+    for event in driving_and_opcharge_events:
+        driver_hours += event.time_end - event.time_start
+    annual_driver_hours = (
+        _annual_scaling_factor(scaling_window)
+        * driver_hours.total_seconds()
+        / 3600
+    )
+
+    number_drivers = (annual_driver_hours * (1 + buffer)) // annual_hours_per_driver
+    actual_driver_hours = annual_hours_per_driver * (number_drivers + 1)
+    return actual_driver_hours
 
 
 class TCOCalculator:
@@ -43,7 +336,7 @@ class TCOCalculator:
         extraction_window: tuple[datetime, datetime],
         scaling_window: tuple[datetime, datetime],
         database_url: Optional[str] = None,
-        energy_consumption_mode: str = "simulated",
+        energy_consumption_mode: str = "constant",
         capex_items=None,
         opex_items=None,
     ):
@@ -64,7 +357,6 @@ class TCOCalculator:
         """
         self._extraction_window = extraction_window
         self._scaling_window = scaling_window
-        # create session
         with create_session(scenario, database_url) as (session, scenario):
             self.scenario = (
                 session.query(Scenario).filter(Scenario.id == scenario.id).one()
@@ -144,7 +436,6 @@ class TCOCalculator:
                     "Using your own list of dictonary then setting up list of opex items is not implemented yet. Please use the database to load the opex items."
                 )
 
-            # initialize scenario related data
             self.project_duration = self.scenario.tco_parameters["project_duration"]
             self.interest_rate = self.scenario.tco_parameters["interest_rate"]
             self.inflation_rate = self.scenario.tco_parameters["inflation_rate"]
@@ -289,15 +580,18 @@ class TCOCalculator:
         ax.legend()
         plt.savefig("tco_by_type.png")
 
-    def _load_capex_items_from_db(
-        self,
-        session,
-        extraction_window: tuple[datetime, datetime],
-    ) -> None:
-        assets_vehicle = load_capex_items_vehicle(session, self.scenario)
-        assets_battery = load_capex_items_battery(session, self.scenario)
-        assets_infrastructure, total_slots = load_capex_items_infrastructure(
-            session, self.scenario, extraction_window
+    def _load_capex_items_from_db(self, session) -> None:
+        assets_vehicle = _load_capex_items_vehicle(
+            self.vehicle_types, self.sim_data, self.eta_avail
+        )
+        assets_battery = _load_capex_items_battery(
+            session, self.vehicle_types, self.sim_data, self.eta_avail
+        )
+        assets_infrastructure, total_slots = _load_capex_items_infrastructure(
+            session,
+            self.scenario,
+            self.sim_data.area_data,
+            self.sim_data.station_data,
         )
 
         capex_items = (
@@ -322,8 +616,8 @@ class TCOCalculator:
         diesel_mileage = self.mileage_by_energy_source.get("DIESEL", 0.0)
 
         # Staff cost
-        total_driver_hours = calculate_total_driver_hours(
-            session, self.scenario, scaling_window
+        total_driver_hours = _calculate_total_driver_hours(
+            session, self.scenario, scaling_window, self._extraction_window
         )
         list_opex_items.append(
             OpexItem(
@@ -350,23 +644,10 @@ class TCOCalculator:
                     elif vt.energy_source == EnergySource.DIESEL:
                         diesel_consumption += c
             case "simulated":
-                electric_consumption = calc_energy_consumption_simulated(
-                    session, self.scenario, scaling_window
+                raise NotImplementedError(
+                    "Simulated energy consumption mode is not implemented yet. "
+                    "Please use 'constant' mode or implement the simulated mode in the TCOCalculator class."
                 )
-                if diesel_mileage > 0:
-                    logger.warning(
-                        "Diesel mileage detected in 'simulated' mode. "
-                        "Diesel energy consumption will be estimated from "
-                        "average_diesel_consumption in VehicleType.tco_parameters."
-                    )
-                    diesel_consumption = sum(
-                        self.const_consumption.get(vt, 0.0)
-                        * self.mileage_per_vt.get(vt, 0.0)
-                        for vt in self.const_consumption
-                        if vt.energy_source == EnergySource.DIESEL
-                    )
-                else:
-                    diesel_consumption = 0.0
             case _:
                 raise ValueError(
                     f"Unknown energy consumption mode: {self.energy_consumption_mode}"
