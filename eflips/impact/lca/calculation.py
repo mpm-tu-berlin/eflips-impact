@@ -395,6 +395,10 @@ def calculate_depot_area_emissions(
 
     peak_power = area_sim.peak_charging_power_kw
 
+    # TODO: better to use peak for research purpose and n_plugs for real-world estimation? Need to align
+
+    n_plugs = capacity
+    # n_plugs = peak
     e_power_units = power_scaled_emissions(
         cpt_params.power_unit_emission,
         peak_power,
@@ -447,7 +451,12 @@ def calculate_terminal_station_emissions(
         )
 
     peak_power = station_sim.peak_charging_power_kw
-    n_plugs = station.amount_charging_places or 0
+
+
+    n_plugs = capacity
+
+    # TODO: better to use peak for research purpose and n_plugs for real-world estimation? Need to align
+    # n_plugs = peak
 
     e_power_units = power_scaled_emissions(
         cpt_params.power_unit_emission,
