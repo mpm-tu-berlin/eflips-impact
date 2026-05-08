@@ -275,7 +275,9 @@ def tco_session(fleet_session: Session, scenario: Scenario) -> Session:
             for ns in VEHICLE_TYPE_TCO_PARAMS
         ],
         charging_point_type_params=[
-            ChargingPointTypeTCOParameter.from_dict({"type": "depot", **DEPOT_CPT_TCO_PARAMS}),
+            ChargingPointTypeTCOParameter.from_dict(
+                {"type": "depot", **DEPOT_CPT_TCO_PARAMS}
+            ),
             ChargingPointTypeTCOParameter.from_dict(
                 {"type": "opportunity", **OPPORTUNITY_CPT_TCO_PARAMS}
             ),

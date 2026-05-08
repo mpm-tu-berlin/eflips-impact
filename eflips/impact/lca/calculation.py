@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import warnings
+import math
 from datetime import datetime
 from typing import Any, Optional, Union
 
@@ -53,12 +54,9 @@ def mass_based_emissions(
 ) -> DefaultImpactVector:
     """Pattern A: scale emissions linearly with mass.
 
-    Args:
-        mass_kg: Component mass in kg.
-        emission_factors_per_kg: Emissions per kg.
-
-    Returns:
-        Total emissions for the given mass.
+    :param mass_kg: Component mass in kg.
+    :param emission_factors_per_kg: Emissions per kg.
+    :returns: Total emissions for the given mass.
     """
     return emission_factors_per_kg * mass_kg
 
@@ -68,12 +66,9 @@ def amortize(
 ) -> DefaultImpactVector:
     """Pattern C: spread total emissions over operating years.
 
-    Args:
-        total_emissions: One-time production/EoL emissions.
-        lifetime_years: Lifetime in years.
-
-    Returns:
-        Annual emissions.
+    :param total_emissions: One-time production/EoL emissions.
+    :param lifetime_years: Lifetime in years.
+    :returns: Annual emissions.
     """
     return total_emissions / lifetime_years
 
@@ -81,12 +76,9 @@ def amortize(
 def efficiency_chain(energy_kwh: float, efficiencies: list[float]) -> float:
     """Pattern D: scale energy upstream through conversion efficiencies.
 
-    Args:
-        energy_kwh: Energy at the downstream end (e.g. battery).
-        efficiencies: Chain of efficiencies (each in 0..1).
-
-    Returns:
-        Energy required at the upstream end.
+    :param energy_kwh: Energy at the downstream end (e.g. battery).
+    :param efficiencies: Chain of efficiencies (each in 0..1).
+    :returns: Energy required at the upstream end.
     """
     result = energy_kwh
     for eta in efficiencies:
@@ -99,12 +91,9 @@ def normalize_to_revenue_km(
 ) -> DefaultImpactVector:
     """Pattern E: convert annual emissions to per-revenue-km.
 
-    Args:
-        annual_emissions: Total annual emissions.
-        revenue_km_annual: Annual revenue-kilometres.
-
-    Returns:
-        Emissions per revenue-kilometre.
+    :param annual_emissions: Total annual emissions.
+    :param revenue_km_annual: Annual revenue-kilometres.
+    :returns: Emissions per revenue-kilometre.
     """
     return annual_emissions / revenue_km_annual
 
@@ -119,13 +108,10 @@ def calculate_battery_mass_kg(
 ) -> float:
     """Derive battery mass from capacity and specific mass.
 
-    Args:
-        vehicle_type: The vehicle type (provides ``battery_capacity``).
-        battery_type: The battery type (provides ``specific_mass``), or
-            ``None`` for ICEB.
-
-    Returns:
-        Battery mass in kg, or ``0.0`` for vehicles without a battery.
+    :param vehicle_type: The vehicle type (provides ``battery_capacity``).
+    :param battery_type: The battery type (provides ``specific_mass``), or
+        ``None`` for ICEB.
+    :returns: Battery mass in kg, or ``0.0`` for vehicles without a battery.
     """
     if battery_type is None:
         return 0.0
@@ -140,14 +126,11 @@ def calculate_chassis_emissions(
 ) -> DefaultImpactVector:
     """Calculate production + EoL emissions for the chassis (§1.4.2).
 
-    Args:
-        empty_mass_kg: Vehicle curb weight in kg.
-        motor_mass_kg: Motor mass in kg.
-        battery_mass_kg: Battery mass in kg (0 for ICEB).
-        params: Vehicle type LCA parameters.
-
-    Returns:
-        Total chassis production emissions (not yet amortised).
+    :param empty_mass_kg: Vehicle curb weight in kg.
+    :param motor_mass_kg: Motor mass in kg.
+    :param battery_mass_kg: Battery mass in kg (0 for ICEB).
+    :param params: Vehicle type LCA parameters.
+    :returns: Total chassis production emissions (not yet amortised).
     """
     chassis_mass = empty_mass_kg - motor_mass_kg - battery_mass_kg
     if chassis_mass <= 0:
@@ -164,12 +147,9 @@ def calculate_motor_emissions(
 ) -> DefaultImpactVector:
     """Calculate production + EoL emissions for the motor (§1.4.3/§1.4.4).
 
-    Args:
-        energy_source: The vehicle's energy source.
-        params: Vehicle type LCA parameters.
-
-    Returns:
-        Total motor production emissions (not yet amortised).
+    :param energy_source: The vehicle's energy source.
+    :param params: Vehicle type LCA parameters.
+    :returns: Total motor production emissions (not yet amortised).
     """
     if energy_source == EnergySource.BATTERY_ELECTRIC:
         if params.motor_emission_factors_per_kg is None:
@@ -192,12 +172,9 @@ def calculate_battery_emissions(
 
     Also checks consistency between LCA and TCO battery lifetimes.
 
-    Args:
-        vehicle_type: The vehicle type.
-        battery_type: The battery type, or ``None`` for ICEB.
-
-    Returns:
-        Tuple of ``(emissions, battery_mass_kg)``.  Both are zero for
+    :param vehicle_type: The vehicle type.
+    :param battery_type: The battery type, or ``None`` for ICEB.
+    :returns: Tuple of ``(emissions, battery_mass_kg)``.  Both are zero for
         vehicles without a battery.
     """
     if battery_type is None:
@@ -229,16 +206,13 @@ def amortize_production(
 ) -> DefaultImpactVector:
     """Amortise production emissions to annual values (§1.4.6).
 
-    Args:
-        e_chassis: Total chassis emissions.
-        e_motor: Total motor emissions.
-        e_battery: Total battery emissions.
-        vehicle_lifetime_years: Motor + chassis lifetime.
-        battery_lifetime_years: Battery lifetime (``None`` for ICEB).
-        energy_source: The vehicle's energy source.
-
-    Returns:
-        Annual production emissions.
+    :param e_chassis: Total chassis emissions.
+    :param e_motor: Total motor emissions.
+    :param e_battery: Total battery emissions.
+    :param vehicle_lifetime_years: Motor + chassis lifetime.
+    :param battery_lifetime_years: Battery lifetime (``None`` for ICEB).
+    :param energy_source: The vehicle's energy source.
+    :returns: Annual production emissions.
     """
     body = amortize(e_motor + e_chassis, vehicle_lifetime_years)
     if energy_source == EnergySource.BATTERY_ELECTRIC:
@@ -260,14 +234,11 @@ def calculate_energy_emissions_beb(
 ) -> DefaultImpactVector:
     """Calculate electricity use-phase emissions for BEB (§1.5.1).
 
-    Args:
-        annual_energy_kwh: Annual energy drawn from the battery in kWh
-            (fleet aggregate for all ready vehicles of this type).
-        charging_efficiency: Battery charging efficiency (0..1).
-        params: Vehicle type LCA parameters.
-
-    Returns:
-        Annual electricity emissions (fleet aggregate).
+    :param annual_energy_kwh: Annual energy drawn from the battery in kWh
+        (fleet aggregate for all ready vehicles of this type).
+    :param charging_efficiency: Battery charging efficiency (0..1).
+    :param params: Vehicle type LCA parameters.
+    :returns: Annual electricity emissions (fleet aggregate).
     """
     if params.efficiency_mv_to_lv is None:
         raise ValueError("efficiency_mv_to_lv required for BEB")
@@ -292,12 +263,9 @@ def calculate_energy_emissions_diesel(
 ) -> DefaultImpactVector:
     """Calculate diesel use-phase emissions for ICEB (§1.5.2).
 
-    Args:
-        annual_diesel_kg: Annual diesel consumption in kg (fleet aggregate).
-        params: Vehicle type LCA parameters.
-
-    Returns:
-        Annual diesel emissions (fleet aggregate).
+    :param annual_diesel_kg: Annual diesel consumption in kg (fleet aggregate).
+    :param params: Vehicle type LCA parameters.
+    :returns: Annual diesel emissions (fleet aggregate).
     """
     if params.diesel_emission_factors_per_kg is None:
         raise ValueError("diesel_emission_factors_per_kg required for ICEB")
@@ -320,15 +288,12 @@ def power_scaled_emissions(
     Applies the six-tenths-rule generalisation:
     ``impact_real = impact_ref * (peak_power / ref_power) ^ exponent``.
 
-    Args:
-        ref_emission: Emissions for the component at *ref_power_kw*.
-        peak_power_kw: Actual peak power demand in kW.
-        ref_power_kw: Reference power for which *ref_emission* was computed
-            in kW.
-        exponent: Scaling exponent (default ``0.8``).
-
-    Returns:
-        Scaled emissions for the actual peak power.
+    :param ref_emission: Emissions for the component at *ref_power_kw*.
+    :param peak_power_kw: Actual peak power demand in kW.
+    :param ref_power_kw: Reference power for which *ref_emission* was computed
+        in kW.
+    :param exponent: Scaling exponent (default ``0.8``).
+    :returns: Scaled emissions for the actual peak power.
     """
     return ref_emission * float((peak_power_kw / ref_power_kw) ** exponent)
 
@@ -336,17 +301,12 @@ def power_scaled_emissions(
 def _get_cpt_params(entity: Any, entity_label: str) -> ChargingPointTypeLcaParams:
     """Load and validate ChargingPointType LCA params from an entity.
 
-    Args:
-        entity: An ``Area`` or ``Station`` ORM object with a
-            ``charging_point_type`` relationship.
-        entity_label: Human-readable label for error messages.
-
-    Returns:
-        Deserialised ``ChargingPointTypeLcaParams``.
-
-    Raises:
-        ValueError: If the charging point type or its LCA params are
-            missing.
+    :param entity: An ``Area`` or ``Station`` ORM object with a
+        ``charging_point_type`` relationship.
+    :param entity_label: Human-readable label for error messages.
+    :returns: Deserialised ``ChargingPointTypeLcaParams``.
+    :raises ValueError: If the charging point type or its LCA params are
+        missing.
     """
     cpt = entity.charging_point_type
     if cpt is None:
@@ -367,12 +327,9 @@ def calculate_depot_area_emissions(
     Issues oversizing warnings when the peak vehicle count is
     significantly below the area capacity.
 
-    Args:
-        area: The depot ``Area`` ORM object.
-        area_sim: Extracted simulation data for this area.
-
-    Returns:
-        Annual infrastructure emissions for this area.
+    :param area: The depot ``Area`` ORM object.
+    :param area_sim: Extracted simulation data for this area.
+    :returns: Annual infrastructure emissions for this area.
     """
     cpt_params = _get_cpt_params(area, f"Area {area.id}")
 
@@ -424,12 +381,9 @@ def calculate_terminal_station_emissions(
 ) -> DefaultImpactVector:
     """Calculate annual infrastructure emissions for a terminal station (§1.6.3).
 
-    Args:
-        station: The ``Station`` ORM object.
-        station_sim: Extracted simulation data for this station.
-
-    Returns:
-        Annual infrastructure emissions for this station.
+    :param station: The ``Station`` ORM object.
+    :param station_sim: Extracted simulation data for this station.
+    :returns: Annual infrastructure emissions for this station.
     """
     cpt_params = _get_cpt_params(station, f"Station {station.id}")
 
@@ -451,7 +405,6 @@ def calculate_terminal_station_emissions(
         )
 
     peak_power = station_sim.peak_charging_power_kw
-
 
     n_plugs = capacity
 
@@ -502,25 +455,20 @@ def calculate_lca(
     relevant entities and returns per-revenue-km emissions broken down
     by contributor and vehicle type.
 
-    Args:
-        scenario: A :class:`~eflips.model.Scenario` instance, an ``int``
-            scenario id, or any object with an ``id`` attribute.
-        extraction_window: ``(start, end)`` pair used to filter which trips
-            and events are included in the query.  If ``None``, derived
-            automatically via
-            :func:`~eflips.impact.utils.extraction.get_extraction_window`.
-        scaling_window: ``(start, end)`` pair used to compute the
-            annualisation factor.  If ``None``, derived automatically via
-            :func:`~eflips.impact.utils.extraction.get_scaling_window`.
-        eta_avail: Technical availability factor (default ``0.9``).
-        database_url: Database URL; falls back to ``$DATABASE_URL`` when
-            ``scenario`` is not already bound to a session.
-
-    Returns:
-        An ``LcaResult`` with per-revenue-km emissions.
-
-    Raises:
-        ValueError: If ``lca_params`` are missing on required entities.
+    :param scenario: A :class:`~eflips.model.Scenario` instance, an ``int``
+        scenario id, or any object with an ``id`` attribute.
+    :param extraction_window: ``(start, end)`` pair used to filter which trips
+        and events are included in the query.  If ``None``, derived
+        automatically via
+        :func:`~eflips.impact.utils.extraction.get_extraction_window`.
+    :param scaling_window: ``(start, end)`` pair used to compute the
+        annualisation factor.  If ``None``, derived automatically via
+        :func:`~eflips.impact.utils.extraction.get_scaling_window`.
+    :param eta_avail: Technical availability factor (default ``0.9``).
+    :param database_url: Database URL; falls back to ``$DATABASE_URL`` when
+        ``scenario`` is not already bound to a session.
+    :returns: An ``LcaResult`` with per-revenue-km emissions.
+    :raises ValueError: If ``lca_params`` are missing on required entities.
     """
     from eflips.impact.utils.extraction import get_extraction_window, get_scaling_window
     from eflips.impact.utils.session import create_session
@@ -577,7 +525,10 @@ def calculate_lca(
 
             battery_type: BatteryType | None = vtype.battery_type
 
-            if vtype.energy_source == EnergySource.BATTERY_ELECTRIC and battery_type is None:
+            if (
+                vtype.energy_source == EnergySource.BATTERY_ELECTRIC
+                and battery_type is None
+            ):
                 warnings.warn(
                     f"VehicleType {vtype_id} is BEB but has no battery_type assigned. "
                     f"Assuming zero battery mass and emissions.",
@@ -585,14 +536,16 @@ def calculate_lca(
                 )
 
             n_ready = vtype_sim.n_ready
-            n_total = n_ready / sim_data.eta_avail
+            n_total = math.ceil(n_ready / sim_data.eta_avail)
             revenue_km = vtype_sim.annual_revenue_kilometers
             vehicle_km = vtype_sim.annual_vehicle_kilometers
             revenue_km_per_type[vtype_id] = revenue_km
             total_revenue_km += revenue_km
 
             if revenue_km <= 0:
-                logger.warning("VehicleType %d has zero revenue-km, skipping.", vtype_id)
+                logger.warning(
+                    "VehicleType %d has zero revenue-km, skipping.", vtype_id
+                )
                 continue
 
             # --- Production + EoL ---

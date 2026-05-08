@@ -275,8 +275,8 @@ def test_calculate_lca_total_correct_shared_denominator(scenario_obj: Scenario) 
         result.use_phase[t].gwp * result.revenue_km[t] for t in result.use_phase
     )
     expected_total_gwp = (
-        (prod_fleet_gwp + use_fleet_gwp) / total_nwkm + result.infrastructure.gwp
-    )
+        prod_fleet_gwp + use_fleet_gwp
+    ) / total_nwkm + result.infrastructure.gwp
     assert result.total.gwp == pytest.approx(expected_total_gwp, rel=1e-6)
 
 

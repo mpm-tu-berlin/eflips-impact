@@ -5,8 +5,12 @@ import platform
 import pandas as pd
 
 
-def parse_section(data: str, section_name: str, section_dict: Dict[str, Union[str, float]],
-                  convert_to_float: bool = False) -> None:
+def parse_section(
+    data: str,
+    section_name: str,
+    section_dict: Dict[str, Union[str, float]],
+    convert_to_float: bool = False,
+) -> None:
     """
     Parse a section from a configuration file and update a dictionary with the section's key-value pairs.
 
@@ -37,11 +41,13 @@ def linear_interpolation_dataframe(wtt_results, start_year, inbetween_year, end_
     wtt_results_copy = wtt_results.copy()  # Create a copy of the DataFrame
     wtt_results_copy = wtt_results_copy.T
 
-    all_years = set(range(start_year, end_year+1))
+    all_years = set(range(start_year, end_year + 1))
     existing_years = {int(start_year), int(inbetween_year), int(end_year)}
     missing_years = list(all_years - existing_years)
 
-    wtt_results_copy = wtt_results_copy.reindex(wtt_results_copy.index.union(missing_years))
+    wtt_results_copy = wtt_results_copy.reindex(
+        wtt_results_copy.index.union(missing_years)
+    )
 
     # Convert index to integer before sorting
     wtt_results_copy.index = wtt_results_copy.index.astype(int)
@@ -49,5 +55,7 @@ def linear_interpolation_dataframe(wtt_results, start_year, inbetween_year, end_
     # Sort the DataFrame by its index before interpolation
     wtt_results_copy = wtt_results_copy.sort_index()
 
-    interpolated_df = wtt_results_copy.interpolate(method='linear', limit_direction='both')
+    interpolated_df = wtt_results_copy.interpolate(
+        method="linear", limit_direction="both"
+    )
     return interpolated_df.T

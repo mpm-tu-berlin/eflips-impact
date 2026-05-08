@@ -3,20 +3,19 @@ from enum import Enum, auto
 
 
 def net_present_value(cash_flow, years_after_base_year: int, discount_rate):
-    """
-    This method is used to calculate the net present value of any cash flow, a default value for the discount rate is set.
+    """Calculate the net present value of a cash flow.
 
     :param cash_flow: The cashflow of which the present value needs to be calculated.
     :param years_after_base_year: The year after the base year in which the cashflow occurs.
     :param discount_rate: The discount rate by which the cash flow should be discounted.
-    :return: A tuple of the present value of the cashflow rounded on 2 decimals and the year after base year in which the cashflow occurs.
+    :returns: The present value of the cashflow discounted to the base year.
     """
     npv = cash_flow / ((1 + discount_rate) ** years_after_base_year)
     return npv
 
 
 class CapexItemType(Enum):
-    """ """
+    """Enum for different types of CAPEX items."""
 
     VEHICLE = auto()
     "For a vehicle asset, annual mileage is required in the asset parameters."
@@ -33,10 +32,7 @@ class CapexItemType(Enum):
 
 @dataclass
 class CapexItem:
-    """
-    A general class describing an asset. It is used in the calculation of CAPEX and should include the following parameters:
-
-    """
+    """A dataclass describing a capital expenditure asset used in TCO calculation."""
 
     name: str
     type: CapexItemType
@@ -51,7 +47,7 @@ class CapexItem:
         Create a CapexItem instance from a dictionary.
 
         :param item_dict: Dictionary containing the parameters of the CapexItem.
-        :return: An instance of CapexItem.
+        :returns: An instance of CapexItem.
         """
         raise NotImplementedError(
             "This method should be implemented to create a CapexItem from a dictionary."
@@ -64,7 +60,7 @@ class CapexItem:
         converted back to the base year to compensate for the inflation in the calculation of the total procurement cost.
 
         :param project_duration: The duration of the project as a timeframe that is considered in this calculation.
-        :return: The replacement cost as well as the number of years after the base year in which the replacement is
+        :returns: The replacement cost as well as the number of years after the base year in which the replacement is
                 conducted are returned with a binary variable which shows whether the useful life of the replaced asset is
                 still within the project duration.
         """
@@ -96,7 +92,18 @@ class CapexItem:
         interest_rate: float,
         net_discount_rate: float,
     ):
-        """ """
+        """Calculate the total procurement cost as a net-present-value annuity sum.
+
+        Annualises each replacement over its useful life using the nominal
+        *interest_rate*, then discounts all annuities to the base year using
+        *net_discount_rate*.
+
+        :param project_duration: Number of years in the project.
+        :param interest_rate: Nominal interest rate (includes inflation).
+        :param net_discount_rate: Discount rate for converting future cashflows to
+            present value.
+        :returns: Sum of all discounted annuities over the project duration.
+        """
         # Get a list with all procurements taking place over the project duration
         all_procurements = self.replacement_cost(
             project_duration,
@@ -165,9 +172,7 @@ class OpexItemType(Enum):
 
 @dataclass
 class OpexItem:
-    """
-    A general class describing an OPEX item. It is used in the calculation of OPEX and should include the following parameters:
-    """
+    """A dataclass describing an operational expenditure item used in TCO calculation."""
 
     name: str
     type: OpexItemType
@@ -177,6 +182,12 @@ class OpexItem:
 
     @staticmethod
     def from_dict(item_dict: dict) -> "OpexItem":
+        """Create an ``OpexItem`` from a dictionary (not yet implemented).
+
+        :param item_dict: Dictionary containing the parameters of the OpexItem.
+        :returns: An instance of ``OpexItem``.
+        :raises NotImplementedError: Always; not yet implemented.
+        """
         raise NotImplementedError(
             "This method should be implemented to create an OpexItem from a dictionary."
         )
@@ -186,7 +197,7 @@ class OpexItem:
         This method calculates the future cost of the OPEX item based on the cost escalation factor and the usage amount.
 
         :param years_after_base_year: The year after the base year in which the cost arises.
-        :return: The future cost of the OPEX item in the respective year.
+        :returns: The future cost of the OPEX item in the respective year.
         """
 
         # The cost escalation should be the nominal cost escalation which includes the general inflation

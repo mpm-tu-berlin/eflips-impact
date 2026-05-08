@@ -15,14 +15,11 @@ def plot_tco_comparison(
 ) -> plt.Figure:
     """Stacked bar chart comparing TCO breakdowns across scenarios.
 
-    Args:
-        all_tco: One ``dict[str, float]`` per scenario, mapping cost-category
-            label to value. Missing keys are treated as zero.
-        all_names: Per-scenario x-axis labels (same length as ``all_tco``).
-        colors: Mapping from cost-category label to matplotlib color.
-
-    Returns:
-        The matplotlib ``Figure`` (caller is responsible for showing/saving).
+    :param all_tco: One ``dict[str, float]`` per scenario, mapping cost-category
+        label to value. Missing keys are treated as zero.
+    :param all_names: Per-scenario x-axis labels (same length as ``all_tco``).
+    :param colors: Mapping from cost-category label to matplotlib color.
+    :returns: The matplotlib ``Figure`` (caller is responsible for showing/saving).
     """
     # Collect all possible keys
     all_keys = sorted({k for d in all_tco for k in d.keys()})

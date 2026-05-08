@@ -74,8 +74,8 @@ def test_replacement_cost_partial_at_end() -> None:
     item = _vehicle_item(useful_life=10)
     replacements = item.replacement_cost(project_duration=14)
     assert len(replacements) == 2
-    assert replacements[0][2] is False   # first: full
-    assert replacements[1][2] is True    # second: partial (only 4/10 years used)
+    assert replacements[0][2] is False  # first: full
+    assert replacements[1][2] is True  # second: partial (only 4/10 years used)
 
 
 def test_replacement_cost_escalation_applied() -> None:
@@ -104,8 +104,12 @@ def test_calculate_total_procurement_cost_higher_interest_lowers_cost() -> None:
     of upfront annuity. Annuity itself rises, so total cost rises with interest rate
     when discount rate is fixed."""
     item = _vehicle_item(useful_life=14)
-    low = item.calculate_total_procurement_cost(14, interest_rate=0.02, net_discount_rate=0.02)
-    high = item.calculate_total_procurement_cost(14, interest_rate=0.08, net_discount_rate=0.02)
+    low = item.calculate_total_procurement_cost(
+        14, interest_rate=0.02, net_discount_rate=0.02
+    )
+    high = item.calculate_total_procurement_cost(
+        14, interest_rate=0.08, net_discount_rate=0.02
+    )
     # Higher interest rate increases the annuity, so total cost is higher.
     assert high > low
 

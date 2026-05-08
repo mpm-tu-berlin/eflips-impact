@@ -1,4 +1,3 @@
-
 from utilslcca import *
 from lca import *
 
@@ -14,10 +13,9 @@ class Cases:
     data: str = None
     parameters: str = "scenario_parameters"
     lca_system: str = "lca_systems"
-    cases: str = 'case_name'
+    cases: str = "case_name"
     lca_results: dict = field(init=False)
     results_json: str = None
-
 
     def __post_init__(self):
         """
@@ -65,4 +63,3 @@ class Cases:
         lca_results = LCA(self.case_lca, first_calc=False).lcaproductsystem()
         lca_results.to_json(self.results_json, orient="split")
         return lca_results
-

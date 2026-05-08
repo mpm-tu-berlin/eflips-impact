@@ -30,20 +30,15 @@ def create_session(
     up the scenario by id, yields it, and on successful exit commits and
     disposes of both session and engine.
 
-    Args:
-        scenario: A :class:`Scenario` instance, an ``int`` id, or any object
-            with an ``id`` attribute.
-        database_url: Database URL used when ``scenario`` is not already
-            bound to a session. Falls back to ``$DATABASE_URL``.
-
-    Yields:
-        Tuple ``(session, scenario)``. ``scenario`` is guaranteed to be a
+    :param scenario: A :class:`Scenario` instance, an ``int`` id, or any object
+        with an ``id`` attribute.
+    :param database_url: Database URL used when ``scenario`` is not already
+        bound to a session. Falls back to ``$DATABASE_URL``.
+    :yields: Tuple ``(session, scenario)``. ``scenario`` is guaranteed to be a
         :class:`Scenario` instance from the yielded session.
-
-    Raises:
-        ValueError: If ``scenario`` is not a Scenario / int / id-bearing
-            object, if a passed Scenario has no bound session, or if no
-            ``database_url`` is available when one is needed.
+    :raises ValueError: If ``scenario`` is not a Scenario / int / id-bearing
+        object, if a passed Scenario has no bound session, or if no
+        ``database_url`` is available when one is needed.
     """
     if isinstance(scenario, Scenario):
         session = sa_inspect(scenario).session

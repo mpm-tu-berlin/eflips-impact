@@ -1,9 +1,10 @@
 import logging
 from dataclasses import dataclass, field
 import olca_ipc as ipc
-#import olca as ipc
-#from olca import ipc
-#from olca import schema as o
+
+# import olca as ipc
+# from olca import ipc
+# from olca import schema as o
 import pandas as pd
 import olca_schema as o
 from typing import List, Dict
@@ -14,11 +15,13 @@ import sys
 
 logging.basicConfig(level=logging.INFO)
 
+
 @dataclass
 class LCA:
     """Class for running LCA calculations with openLCA."""
+
     openLCA_product_systems: Dict[str, str]
-    LCAImpactMethods: str = 'c99194f6-351f-425a-82eb-6cd9654cefca'
+    LCAImpactMethods: str = "c99194f6-351f-425a-82eb-6cd9654cefca"
     product_systems: List[str] = field(default_factory=list)
     impact_categories: List[str] = field(default_factory=list)
     results: List[float] = field(default_factory=list)
@@ -42,7 +45,7 @@ class LCA:
                     id=ids,
                 ),
                 impact_method=o.Ref(id=self.LCAImpactMethods),
-                nw_set=o.Ref(id="867fe119-0b5c-38a0-a3e6-1d845ffaedd5")
+                nw_set=o.Ref(id="867fe119-0b5c-38a0-a3e6-1d845ffaedd5"),
             )
 
             client = ipc.Client()
@@ -53,10 +56,15 @@ class LCA:
             if self.first_calc == False:
                 if self.results != None:
                     self.first_calc = True
-                    self.impact_categories = [(str(n.impact_category.name)) + ' ' + str(n.impact_category.ref_unit) for
-                                              n in
-                                              self.results]
-                    self.LCAResults = pd.DataFrame(columns=self.product_systems, index=self.impact_categories)
+                    self.impact_categories = [
+                        (str(n.impact_category.name))
+                        + " "
+                        + str(n.impact_category.ref_unit)
+                        for n in self.results
+                    ]
+                    self.LCAResults = pd.DataFrame(
+                        columns=self.product_systems, index=self.impact_categories
+                    )
                 else:
                     raise ValueError(f"The LCA can't run,'{self.results}' is empty.")
             else:

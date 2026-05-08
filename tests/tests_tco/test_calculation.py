@@ -58,9 +58,7 @@ def test_expected_cost_categories_present(
     assert "MAINTENANCE" in categories
 
 
-def test_all_category_costs_positive(
-    tco_session: Session, scenario: Scenario
-) -> None:
+def test_all_category_costs_positive(tco_session: Session, scenario: Scenario) -> None:
     result = TCOCalculator(scenario).calculate()
     for category, cost in result.tco_by_type.items():
         assert cost >= 0.0, f"Negative cost in category {category}: {cost}"
@@ -71,9 +69,7 @@ def test_all_category_costs_positive(
 # ---------------------------------------------------------------------------
 
 
-def test_vehicle_km_geq_revenue_km(
-    tco_session: Session, scenario: Scenario
-) -> None:
+def test_vehicle_km_geq_revenue_km(tco_session: Session, scenario: Scenario) -> None:
     calc = TCOCalculator(scenario)
     calc.calculate()
     assert calc.annual_vehicle_mileage > 0.0
@@ -86,9 +82,7 @@ def test_vehicle_km_geq_revenue_km(
 # ---------------------------------------------------------------------------
 
 
-def test_tco_per_vehicle_km_positive(
-    tco_session: Session, scenario: Scenario
-) -> None:
+def test_tco_per_vehicle_km_positive(tco_session: Session, scenario: Scenario) -> None:
     result = TCOCalculator(scenario).calculate()
     assert result.tco_per_vehicle_km > 0.0
 
@@ -116,9 +110,7 @@ def test_tco_by_type_per_km_sums_to_total(
 # ---------------------------------------------------------------------------
 
 
-def test_calculate_tco_returns_dict(
-    tco_session: Session, scenario: Scenario
-) -> None:
+def test_calculate_tco_returns_dict(tco_session: Session, scenario: Scenario) -> None:
     result = calculate_tco(scenario)
     assert isinstance(result, dict)
     assert len(result) > 0

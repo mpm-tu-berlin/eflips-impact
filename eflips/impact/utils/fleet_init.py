@@ -83,23 +83,20 @@ def init_fleet(
     a ``UserWarning`` is emitted and the function returns without changing the
     database.
 
-    Args:
-        scenario: A :class:`eflips.model.Scenario` (uses its bound session;
-            caller owns the transaction), an ``int`` scenario id, or any
-            object with an ``id`` attribute. For the latter two cases,
-            ``database_url`` (or ``$DATABASE_URL``) is used to open a fresh
-            session that is committed and closed before return.
-        filepath: Path to the ``fleet.json`` file.
-        delete_existing_data: If ``False`` and any BatteryType or
-            ChargingPointType already exists in the scenario, warn and
-            return without mutation. If ``True``, NULL the FKs on
-            VehicleType / Area / Station, delete the existing rows, and
-            recreate from ``fleet.json`` — all in one transaction.
+    :param scenario: A :class:`eflips.model.Scenario` (uses its bound session;
+        caller owns the transaction), an ``int`` scenario id, or any
+        object with an ``id`` attribute. For the latter two cases,
+        ``database_url`` (or ``$DATABASE_URL``) is used to open a fresh
+        session that is committed and closed before return.
+    :param filepath: Path to the ``fleet.json`` file.
+    :param delete_existing_data: If ``False`` and any BatteryType or
+        ChargingPointType already exists in the scenario, warn and
+        return without mutation. If ``True``, NULL the FKs on
+        VehicleType / Area / Station, delete the existing rows, and
+        recreate from ``fleet.json`` — all in one transaction.
 
-    Returns:
-        ``None``. Mutations are committed (or left to the caller's session).
+    .. note::
 
-    Note:
         When ``delete_existing_data=True``, any existing ``tco_parameters``
         or ``lca_params`` JSONB content on VehicleType / Area / Station rows
         becomes stale (it referenced the deleted rows). The caller is

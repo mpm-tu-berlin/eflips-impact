@@ -24,7 +24,9 @@ from eflips.impact.utils.extraction import (
     ScenarioSimData,
     StationSimData,
     _annual_scaling_factor,
-    extract_simulation_data, get_scaling_window, get_extraction_window,
+    extract_simulation_data,
+    get_scaling_window,
+    get_extraction_window,
 )
 from eflips.impact.tco.cost_items import (
     CapexItem,
@@ -46,14 +48,11 @@ def _load_capex_items_vehicle(
 ) -> List[CapexItem]:
     """Build vehicle CAPEX items from pre-loaded vehicle types and SimData.
 
-    Args:
-        vehicle_types: All ``VehicleType`` ORM objects for the scenario.
-        sim_data: Pre-built scenario simulation data.
-        eta_avail: Technical availability factor; fleet size =
-            ``ceil(n_ready / eta_avail)``.
-
-    Returns:
-        List of :class:`CapexItem` with one entry per vehicle type.
+    :param vehicle_types: All ``VehicleType`` ORM objects for the scenario.
+    :param sim_data: Pre-built scenario simulation data.
+    :param eta_avail: Technical availability factor; fleet size =
+        ``ceil(n_ready / eta_avail)``.
+    :returns: List of :class:`CapexItem` with one entry per vehicle type.
     """
     list_vt_asset = []
     for vt in vehicle_types:
@@ -61,7 +60,9 @@ def _load_capex_items_vehicle(
         if vd is None:
             continue
         count = math.ceil(vd.n_ready / eta_avail)
-        fuel_suffix = "(Diesel)" if vt.energy_source == EnergySource.DIESEL else "(Electric)"
+        fuel_suffix = (
+            "(Diesel)" if vt.energy_source == EnergySource.DIESEL else "(Electric)"
+        )
         tco_parameters = vt.tco_parameters or {}
         asset = CapexItem(
             name=f"{vt.name} {fuel_suffix}",
@@ -83,15 +84,12 @@ def _load_capex_items_battery(
 ) -> List[CapexItem]:
     """Build battery CAPEX items from pre-loaded vehicle types and SimData.
 
-    Args:
-        session: SQLAlchemy session (used to query ``BatteryType`` by id).
-        vehicle_types: All ``VehicleType`` ORM objects for the scenario.
-        sim_data: Pre-built scenario simulation data.
-        eta_avail: Technical availability factor; battery count per type =
-            ``ceil(n_ready / eta_avail)``.
-
-    Returns:
-        List of :class:`CapexItem` with one entry per BEB vehicle type that
+    :param session: SQLAlchemy session (used to query ``BatteryType`` by id).
+    :param vehicle_types: All ``VehicleType`` ORM objects for the scenario.
+    :param sim_data: Pre-built scenario simulation data.
+    :param eta_avail: Technical availability factor; battery count per type =
+        ``ceil(n_ready / eta_avail)``.
+    :returns: List of :class:`CapexItem` with one entry per BEB vehicle type that
         has a battery assigned.
     """
     list_battery_asset = []
@@ -128,14 +126,11 @@ def _load_capex_items_infrastructure(
 ):
     """Calculate the number of charging infrastructure items required.
 
-    Args:
-        session: A Session object.
-        scenario: A Scenario object.
-        area_data: Pre-built per-area peak data from :class:`ScenarioSimData`.
-        station_data: Pre-built per-station peak data from :class:`ScenarioSimData`.
-
-    Returns:
-        A tuple ``(list_of_capex_items, total_slots)``.
+    :param session: A Session object.
+    :param scenario: A Scenario object.
+    :param area_data: Pre-built per-area peak data from :class:`ScenarioSimData`.
+    :param station_data: Pre-built per-station peak data from :class:`ScenarioSimData`.
+    :returns: A tuple ``(list_of_capex_items, total_slots)``.
     """
     area_peaks: dict[int, AreaSimData] = area_data
     station_peaks: dict[int, StationSimData] = station_data
@@ -234,14 +229,11 @@ def _calc_energy_consumption_simulated(
 ) -> float:
     """Return total annual energy consumption from simulation SoC data.
 
-    Args:
-        session: A session object.
-        scenario: A scenario object.
-        scaling_window: ``(start, end)`` pair used to compute the
-            annualisation factor.
-
-    Returns:
-        Total annual energy consumption in kWh.
+    :param session: A session object.
+    :param scenario: A scenario object.
+    :param scaling_window: ``(start, end)`` pair used to compute the
+        annualisation factor.
+    :returns: Total annual energy consumption in kWh.
     """
     result = (
         session.query(
@@ -276,18 +268,15 @@ def _calculate_total_driver_hours(
 ) -> float:
     """Return total annual driver hours required for the scenario.
 
-    Args:
-        session: A session object.
-        scenario: A scenario object.
-        scaling_window: ``(start, end)`` pair used to compute the
-            annualisation factor.
-        extraction_window: ``(start, end)`` pair used to filter which events
-            are included in the driver hours calculation.
-        annual_hours_per_driver: Contractual hours per driver per year.
-        buffer: Fractional overhead for absences and reliefs.
-
-    Returns:
-        Total annual driver hours (including buffer), rounded up to a full
+    :param session: A session object.
+    :param scenario: A scenario object.
+    :param scaling_window: ``(start, end)`` pair used to compute the
+        annualisation factor.
+    :param extraction_window: ``(start, end)`` pair used to filter which events
+        are included in the driver hours calculation.
+    :param annual_hours_per_driver: Contractual hours per driver per year.
+    :param buffer: Fractional overhead for absences and reliefs.
+    :returns: Total annual driver hours (including buffer), rounded up to a full
         driver allocation.
     """
     extract_start, extract_end = extraction_window
@@ -314,9 +303,7 @@ def _calculate_total_driver_hours(
     for event in driving_and_opcharge_events:
         driver_hours += event.time_end - event.time_start
     annual_driver_hours = (
-        _annual_scaling_factor(scaling_window)
-        * driver_hours.total_seconds()
-        / 3600
+        _annual_scaling_factor(scaling_window) * driver_hours.total_seconds() / 3600
     )
 
     number_drivers = (annual_driver_hours * (1 + buffer)) // annual_hours_per_driver
@@ -325,10 +312,7 @@ def _calculate_total_driver_hours(
 
 
 class TCOCalculator:
-    """
-    This class is used to calculate the total cost of ownership based on the input data provided in the dictionaries.
-    It contains methods to calculate the CAPEX and OPEX sections of the TCO.
-    """
+    """Calculate the total cost of ownership from scenario-level CAPEX and OPEX data."""
 
     def __init__(
         self,
@@ -342,21 +326,20 @@ class TCOCalculator:
     ):
         """Initialise the TCO calculator and load all cost data from the DB.
 
-        Args:
-            scenario: An eflips-model Scenario object or integer scenario id.
-            extraction_window: ``(start, end)`` pair used to filter which
-                trips and events are included in cost calculations. If
-                ``None``, auto-detected from the earliest and latest event
-                times in the scenario.
-            scaling_window: ``(start, end)`` pair used to compute the
-                annualisation factor applied to simulation-period values. If
-                ``None``, auto-detected from trip departure times.
-            database_url: SQLAlchemy database URL; falls back to
-                ``DATABASE_URL`` environment variable when omitted.
-            energy_consumption_mode: ``"simulated"`` (use SoC data from DB)
-                or ``"constant"`` (use ``average_*_consumption`` parameters).
-            capex_items: Reserved; must be ``None`` (not yet implemented).
-            opex_items: Reserved; must be ``None`` (not yet implemented).
+        :param scenario: An eflips-model Scenario object or integer scenario id.
+        :param extraction_window: ``(start, end)`` pair used to filter which
+            trips and events are included in cost calculations. If
+            ``None``, auto-detected from the earliest and latest event
+            times in the scenario.
+        :param scaling_window: ``(start, end)`` pair used to compute the
+            annualisation factor applied to simulation-period values. If
+            ``None``, auto-detected from trip departure times.
+        :param database_url: SQLAlchemy database URL; falls back to
+            ``DATABASE_URL`` environment variable when omitted.
+        :param energy_consumption_mode: ``"simulated"`` (use SoC data from DB)
+            or ``"constant"`` (use ``average_*_consumption`` parameters).
+        :param capex_items: Reserved; must be ``None`` (not yet implemented).
+        :param opex_items: Reserved; must be ``None`` (not yet implemented).
         """
 
         with create_session(scenario, database_url) as (session, scenario):
@@ -374,9 +357,7 @@ class TCOCalculator:
                 self._extraction_window = extraction_window
 
             # Read eta_avail from scenario TCO parameters
-            self.eta_avail: float = float(
-                self.scenario.tco_parameters.get("eta_avail")
-            )
+            self.eta_avail: float = float(self.scenario.tco_parameters.get("eta_avail"))
 
             # Build SimData (vehicle-km, revenue-km, fleet counts, area/station peaks)
             self.sim_data: ScenarioSimData = extract_simulation_data(
@@ -455,10 +436,9 @@ class TCOCalculator:
             self.tco_by_item: Optional[pd.DataFrame] = None
 
     def calculate(self) -> TCOResult:
-        """
-        Calculate the total cost of ownership.
+        """Calculate the total cost of ownership.
 
-        :return: A :class:`TCOResult` with aggregated totals and per-type specific costs
+        :returns: A :class:`TCOResult` with aggregated totals and per-type specific costs
             (EUR/km). The detailed itemised breakdown is also stored in ``self.tco_by_item``.
         """
         list_of_items = []
@@ -514,9 +494,7 @@ class TCOCalculator:
         return self.result
 
     def visualize(self):
-        """
-        Visualize the TCO results.
-        """
+        """Visualize the TCO results."""
 
         import matplotlib.pyplot as plt
 
@@ -592,6 +570,10 @@ class TCOCalculator:
         plt.savefig("tco_by_type.png")
 
     def _load_capex_items_from_db(self, session) -> None:
+        """Load and build all CAPEX items from the database.
+
+        :param session: SQLAlchemy session.
+        """
         assets_vehicle = _load_capex_items_vehicle(
             self.vehicle_types, self.sim_data, self.eta_avail
         )
@@ -615,7 +597,10 @@ class TCOCalculator:
         self,
         session,
     ) -> None:
-        """Load all OPEX items from the database."""
+        """Load all OPEX items from the database.
+
+        :param session: SQLAlchemy session.
+        """
 
         list_opex_items = []
 
@@ -648,7 +633,10 @@ class TCOCalculator:
                     vd = self.sim_data.vehicle_type_data.get(int(vt.id))
                     if vd is None:
                         continue
-                    c = self.const_consumption.get(vt, 0.0) * vd.annual_vehicle_kilometers
+                    c = (
+                        self.const_consumption.get(vt, 0.0)
+                        * vd.annual_vehicle_kilometers
+                    )
                     if vt.energy_source == EnergySource.BATTERY_ELECTRIC:
                         electric_consumption += c
                     elif vt.energy_source == EnergySource.DIESEL:

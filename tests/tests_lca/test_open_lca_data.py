@@ -185,7 +185,6 @@ class TestOpenLcaDataRoundtrip:
     """Tests for ``OpenLcaData`` serialization."""
 
 
-
 # ===================================================================
 # from_json_lca tests
 # ===================================================================
@@ -455,7 +454,11 @@ class TestInitLcaParams:
 
         from tests.tests_lca.conftest import SCENARIO_ID
 
-        scenario = db_session.query(__import__("eflips.model", fromlist=["Scenario"]).Scenario).filter_by(id=SCENARIO_ID).one()
+        scenario = (
+            db_session.query(__import__("eflips.model", fromlist=["Scenario"]).Scenario)
+            .filter_by(id=SCENARIO_ID)
+            .one()
+        )
 
         init_lca_params(
             scenario=scenario,
@@ -465,12 +468,18 @@ class TestInitLcaParams:
 
         vtypes = db_session.query(VehicleType).filter_by(scenario_id=SCENARIO_ID).all()
         for vt in vtypes:
-            assert vt.lca_params is not None, f"VehicleType {vt.name_short!r} has no lca_params"
+            assert (
+                vt.lca_params is not None
+            ), f"VehicleType {vt.name_short!r} has no lca_params"
 
         bt = db_session.query(BatteryType).filter_by(scenario_id=SCENARIO_ID).first()
         assert bt is not None and bt.lca_params is not None
 
-        cpt = db_session.query(ChargingPointType).filter_by(scenario_id=SCENARIO_ID).first()
+        cpt = (
+            db_session.query(ChargingPointType)
+            .filter_by(scenario_id=SCENARIO_ID)
+            .first()
+        )
         assert cpt is not None and cpt.lca_params is not None
 
     def test_vehicle_type_override_values_applied(
@@ -481,7 +490,11 @@ class TestInitLcaParams:
 
         from tests.tests_lca.conftest import SCENARIO_ID
 
-        scenario = db_session.query(__import__("eflips.model", fromlist=["Scenario"]).Scenario).filter_by(id=SCENARIO_ID).one()
+        scenario = (
+            db_session.query(__import__("eflips.model", fromlist=["Scenario"]).Scenario)
+            .filter_by(id=SCENARIO_ID)
+            .one()
+        )
 
         init_lca_params(
             scenario=scenario,
@@ -490,7 +503,11 @@ class TestInitLcaParams:
         )
 
         # EN has average_consumption_kwh_per_km: 1.48 in lca_overrides.json
-        en = db_session.query(VehicleType).filter_by(scenario_id=SCENARIO_ID, name_short="EN").one()
+        en = (
+            db_session.query(VehicleType)
+            .filter_by(scenario_id=SCENARIO_ID, name_short="EN")
+            .one()
+        )
         assert en.lca_params["average_consumption_kwh_per_km"] == pytest.approx(1.48)
 
     def test_cpt_overrides_infrastructure_lifetime(
@@ -501,7 +518,11 @@ class TestInitLcaParams:
 
         from tests.tests_lca.conftest import SCENARIO_ID
 
-        scenario = db_session.query(__import__("eflips.model", fromlist=["Scenario"]).Scenario).filter_by(id=SCENARIO_ID).one()
+        scenario = (
+            db_session.query(__import__("eflips.model", fromlist=["Scenario"]).Scenario)
+            .filter_by(id=SCENARIO_ID)
+            .one()
+        )
 
         init_lca_params(
             scenario=scenario,
@@ -509,7 +530,11 @@ class TestInitLcaParams:
             overrides_json_path=DEFAULTS_DIR / "lca_overrides.json",
         )
 
-        cpt = db_session.query(ChargingPointType).filter_by(scenario_id=SCENARIO_ID).first()
+        cpt = (
+            db_session.query(ChargingPointType)
+            .filter_by(scenario_id=SCENARIO_ID)
+            .first()
+        )
         assert cpt is not None
         # lca_overrides.json sets infrastructure_lifetime_years: 20.0
         assert cpt.lca_params["infrastructure_lifetime_years"] == pytest.approx(20.0)
@@ -542,7 +567,11 @@ class TestInitLcaParams:
         with open(overrides_path, "w") as f:
             json.dump(partial_overrides, f)
 
-        scenario = db_session.query(__import__("eflips.model", fromlist=["Scenario"]).Scenario).filter_by(id=SCENARIO_ID).one()
+        scenario = (
+            db_session.query(__import__("eflips.model", fromlist=["Scenario"]).Scenario)
+            .filter_by(id=SCENARIO_ID)
+            .one()
+        )
 
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
@@ -553,5 +582,7 @@ class TestInitLcaParams:
             )
 
         assert result is None
-        user_warnings = [str(w.message) for w in caught if issubclass(w.category, UserWarning)]
+        user_warnings = [
+            str(w.message) for w in caught if issubclass(w.category, UserWarning)
+        ]
         assert any("lca_params will not be written" in msg for msg in user_warnings)

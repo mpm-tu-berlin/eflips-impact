@@ -48,8 +48,7 @@ class YearSeries:
     for years between defined data points and clamping (with a warning)
     for years outside the defined range.
 
-    Attributes:
-        data: Mapping from calendar year to ``DefaultImpactVector``.
+    :ivar data: Mapping from calendar year to ``DefaultImpactVector``.
     """
 
     data: dict[int, DefaultImpactVector]
@@ -57,14 +56,9 @@ class YearSeries:
     def at_year(self, year: int) -> DefaultImpactVector:
         """Look up or interpolate an impact vector for a given year.
 
-        Args:
-            year: The calendar year to query.
-
-        Returns:
-            The exact or interpolated ``DefaultImpactVector``.
-
-        Raises:
-            ValueError: If the series is empty.
+        :param year: The calendar year to query.
+        :returns: The exact or interpolated ``DefaultImpactVector``.
+        :raises ValueError: If the series is empty.
         """
         if not self.data:
             raise ValueError("YearSeries is empty")
@@ -101,8 +95,7 @@ class YearSeries:
     def to_dict(self) -> dict[str, dict[str, float]]:
         """Serialize to a JSON-compatible dict with string year keys.
 
-        Returns:
-            A dict mapping year strings to impact vector dicts.
+        :returns: A dict mapping year strings to impact vector dicts.
         """
         return {str(year): iv.to_dict() for year, iv in self.data.items()}
 
@@ -110,11 +103,8 @@ class YearSeries:
     def from_dict(cls, raw: dict[str, Any]) -> YearSeries:
         """Deserialize from a dict with string year keys.
 
-        Args:
-            raw: A dict mapping year strings to impact vector dicts.
-
-        Returns:
-            A ``YearSeries`` instance.
+        :param raw: A dict mapping year strings to impact vector dicts.
+        :returns: A ``YearSeries`` instance.
         """
         data = {
             int(year_str): DefaultImpactVector.from_dict(iv_dict)
@@ -135,42 +125,37 @@ class OpenLcaData:
     Captures the 14 ImpactVectors from openLCA plus scalar/literature
     parameters needed to populate ``lca_params`` on eflips-model entities.
 
-    Attributes:
-        ecoinvent_version: Version string for the ecoinvent database.
-        lcia_method_set: Name/version of the LCIA method set used.
-        description: Free-text description of this dataset.
-        created_at: ISO 8601 timestamp of creation.
-        chassis_per_kg: Chassis emission factors per kg.
-        electric_motor_per_kg: Electric motor emission factors per kg.
-        diesel_motor_per_unit: Diesel motor emission factors per unit.
-        lfp_battery_per_kg: LFP battery emission factors per kg.
-        nmc_battery_per_kg: NMC battery emission factors per kg.
-        electricity_per_kwh: Year-varying electricity emission factors
-            per kWh.
-        diesel_per_kg: Diesel well-to-wheel emission factors per kg
-            (production + combustion combined).
-        maintenance_iceb_per_year: ICEB maintenance emission factors
-            per bus-year.
-        maintenance_beb_per_year: BEB maintenance emission factors
-            per bus-year.
-        control_unit: Charging control unit emission factors per unit.
-        power_unit: Charging power unit emission factors per unit.
-        user_unit: Charging user unit emission factors per unit.
-        transformer: Transformer emission factors per unit.
-        concrete_per_m3: Concrete emission factors per m3.
-        diesel_motor_mass_kg: Diesel motor mass in kg.
-        efficiency_mv_to_lv: MV to LV transformer efficiency.
-        efficiency_lv_ac_to_dc: AC/DC rectification efficiency.
-        battery_lifetime_years: Battery lifetime for amortisation.
-        beb_maintenance_reduction_factor: BEB maintenance reduction
-            factor relative to ICEB (stored for traceability; the
-            already-reduced value is in ``maintenance_beb_per_year``).
-        power_unit_rated_power_kw: Rated power of one power unit in kW.
-        transformer_ref_power_kw: Reference power of the transformer LCA
-            dataset in kW; used as the denominator in the 0.8-exponent
-            scaling law.
-        eta_avail: Technical availability factor used to scale n_ready to
-            total fleet size (``n_total = ceil(n_ready / eta_avail)``).
+    :ivar ecoinvent_version: Version string for the ecoinvent database.
+    :ivar lcia_method_set: Name/version of the LCIA method set used.
+    :ivar description: Free-text description of this dataset.
+    :ivar created_at: ISO 8601 timestamp of creation.
+    :ivar chassis_per_kg: Chassis emission factors per kg.
+    :ivar electric_motor_per_kg: Electric motor emission factors per kg.
+    :ivar diesel_motor_per_unit: Diesel motor emission factors per unit.
+    :ivar lfp_battery_per_kg: LFP battery emission factors per kg.
+    :ivar nmc_battery_per_kg: NMC battery emission factors per kg.
+    :ivar electricity_per_kwh: Year-varying electricity emission factors per kWh.
+    :ivar diesel_per_kg: Diesel well-to-wheel emission factors per kg
+        (production + combustion combined).
+    :ivar maintenance_iceb_per_year: ICEB maintenance emission factors per bus-year.
+    :ivar maintenance_beb_per_year: BEB maintenance emission factors per bus-year.
+    :ivar control_unit: Charging control unit emission factors per unit.
+    :ivar power_unit: Charging power unit emission factors per unit.
+    :ivar user_unit: Charging user unit emission factors per unit.
+    :ivar transformer: Transformer emission factors per unit.
+    :ivar concrete_per_m3: Concrete emission factors per m3.
+    :ivar diesel_motor_mass_kg: Diesel motor mass in kg.
+    :ivar efficiency_mv_to_lv: MV to LV transformer efficiency.
+    :ivar efficiency_lv_ac_to_dc: AC/DC rectification efficiency.
+    :ivar battery_lifetime_years: Battery lifetime for amortisation.
+    :ivar beb_maintenance_reduction_factor: BEB maintenance reduction factor
+        relative to ICEB (stored for traceability; the already-reduced value is
+        in ``maintenance_beb_per_year``).
+    :ivar power_unit_rated_power_kw: Rated power of one power unit in kW.
+    :ivar transformer_ref_power_kw: Reference power of the transformer LCA
+        dataset in kW; used as the denominator in the 0.8-exponent scaling law.
+    :ivar eta_avail: Technical availability factor used to scale n_ready to
+        total fleet size (``n_total = ceil(n_ready / eta_avail)``).
     """
 
     # Metadata
@@ -204,6 +189,7 @@ class OpenLcaData:
     diesel_motor_mass_kg: float
     efficiency_mv_to_lv: float
     eta_avail: float
+
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-compatible dict.
 
@@ -211,8 +197,7 @@ class OpenLcaData:
         fields pass through; ``DefaultImpactVector`` and ``YearSeries``
         fields delegate to their own ``to_dict()``.
 
-        Returns:
-            A dict suitable for ``json.dumps()``.
+        :returns: A dict suitable for ``json.dumps()``.
         """
         hints = get_type_hints(type(self))
         result: dict[str, Any] = {}
@@ -226,8 +211,6 @@ class OpenLcaData:
             else:
                 raise TypeError(f"Unsupported field type {hint!r} for field '{f.name}'")
         return result
-
-
 
     @classmethod
     def from_json_lca(cls, path: str | Path) -> OpenLcaData:
@@ -249,15 +232,9 @@ class OpenLcaData:
         via ``lca_overrides.json``, not stored in ``lca.json``; the
         dataclass defaults apply for those two fields.
 
-        Args:
-            path: Path to the lca.json file.
-
-        Returns:
-            An ``OpenLcaData`` instance.
-
-        Raises:
-            KeyError: If a required section or field is missing from the
-                file.
+        :param path: Path to the lca.json file.
+        :returns: An ``OpenLcaData`` instance.
+        :raises KeyError: If a required section or field is missing from the file.
         """
         with open(path, "r", encoding="utf-8") as f:
             raw = json.load(f)
@@ -348,12 +325,9 @@ class OpenLcaData:
     ) -> VehicleTypeLcaParams:
         """Construct BEB ``VehicleTypeLcaParams`` from this dataset.
 
-        Args:
-            year: Calendar year for selecting the electricity emission factor.
-            overrides: Per-vehicle-model values not derivable from openLCA.
-
-        Returns:
-            A validated ``VehicleTypeLcaParams`` for a BEB.
+        :param year: Calendar year for selecting the electricity emission factor.
+        :param overrides: Per-vehicle-model values not derivable from openLCA.
+        :returns: A validated ``VehicleTypeLcaParams`` for a BEB.
         """
         if overrides.motor_power_to_weight_ratio_kw_per_kg is None:
             raise ValueError(
@@ -379,15 +353,10 @@ class OpenLcaData:
     ) -> VehicleTypeLcaParams:
         """Construct ICEB ``VehicleTypeLcaParams`` from this dataset.
 
-        Args:
-            overrides: Per-vehicle-model values not derivable from openLCA.
-                ``overrides.diesel_consumption_kg_per_km`` must not be ``None``.
-
-        Returns:
-            A validated ``VehicleTypeLcaParams`` for an ICEB.
-
-        Raises:
-            ValueError: If ``overrides.diesel_consumption_kg_per_km`` is ``None``.
+        :param overrides: Per-vehicle-model values not derivable from openLCA.
+            ``overrides.diesel_consumption_kg_per_km`` must not be ``None``.
+        :returns: A validated ``VehicleTypeLcaParams`` for an ICEB.
+        :raises ValueError: If ``overrides.diesel_consumption_kg_per_km`` is ``None``.
         """
         if overrides.diesel_consumption_kg_per_km is None:
             raise ValueError(
@@ -411,15 +380,12 @@ class OpenLcaData:
     ) -> BatteryTypeLcaParams:
         """Construct ``BatteryTypeLcaParams`` from this dataset.
 
-        Args:
-            chemistry: Battery cell chemistry string from
-                ``BatteryType.chemistry`` (e.g. ``"NMC622"``, ``"LFP"``).
-                Strings starting with ``"NMC"`` (case-insensitive) select
-                ``nmc_battery_per_kg``; all other values (including ``None``)
-                select ``lfp_battery_per_kg``.
-
-        Returns:
-            A ``BatteryTypeLcaParams``.
+        :param chemistry: Battery cell chemistry string from
+            ``BatteryType.chemistry`` (e.g. ``"NMC622"``, ``"LFP"``).
+            Strings starting with ``"NMC"`` (case-insensitive) select
+            ``nmc_battery_per_kg``; all other values (including ``None``)
+            select ``lfp_battery_per_kg``.
+        :returns: A ``BatteryTypeLcaParams``.
         """
         if chemistry is not None and chemistry.upper().startswith("NMC"):
             ef = self.nmc_battery_per_kg
@@ -436,17 +402,15 @@ class OpenLcaData:
     ) -> ChargingPointTypeLcaParams:
         """Construct ``ChargingPointTypeLcaParams`` from this dataset.
 
-        Args:
-            overrides: Infrastructure lifetime and foundation volume, read
-                from ``lca_overrides.json``.
+        :param overrides: Infrastructure lifetime and foundation volume, read
+            from ``lca_overrides.json``.
+        :returns: A ``ChargingPointTypeLcaParams``.
 
-        Returns:
-            A ``ChargingPointTypeLcaParams``.
+        .. note::
 
-        Warns:
-            UserWarning: If ``transformer`` or ``concrete_per_m3`` are zero
-                vectors, meaning those emission contributions will be silently
-                omitted from the LCA calculation.
+            Emits a ``UserWarning`` if ``transformer`` or ``concrete_per_m3``
+            are zero vectors, meaning those emission contributions will be
+            silently omitted from the LCA calculation.
         """
         if self.transformer == DefaultImpactVector.zero():
             warnings.warn(
@@ -500,16 +464,11 @@ class OpenLcaData:
           neither maps to a ``DefaultImpactVector`` field and both are
           skipped.
 
-        Args:
-            raw: Parsed ``bus_results.json`` dict with ``"columns"``,
-                ``"index"``, and ``"data"`` keys.
-
-        Returns:
-            A dict mapping each column name to its ``DefaultImpactVector``.
-
-        Raises:
-            ValueError: If a required impact-category acronym is absent from
-                the index.
+        :param raw: Parsed ``bus_results.json`` dict with ``"columns"``,
+            ``"index"``, and ``"data"`` keys.
+        :returns: A dict mapping each column name to its ``DefaultImpactVector``.
+        :raises ValueError: If a required impact-category acronym is absent from
+            the index.
         """
         columns: list[str] = raw["columns"]
         index: list[str] = raw["index"]
@@ -577,17 +536,15 @@ class VehicleTypeOverrides:
     These differ per bus model and must be provided alongside the
     ``OpenLcaData`` when populating ``lca_params``.
 
-    Attributes:
-        motor_rated_power_kw: Rated motor power in kW.
-        vehicle_lifetime_years: Vehicle (chassis + motor) lifetime for
-            amortisation in years.
-        motor_power_to_weight_ratio_kw_per_kg: Electric motor power-to-weight
-            ratio in kW/kg, used to derive motor mass.  ``None`` for diesel
-            (motor mass is fixed globally in ``OpenLcaData.diesel_motor_mass_kg``).
-        average_consumption_kwh_per_km: Average energy consumption
-            in kWh/km for LCA.
-        diesel_consumption_kg_per_km: Average diesel consumption in
-            kg/km, or ``None`` for BEB.
+    :ivar motor_rated_power_kw: Rated motor power in kW.
+    :ivar vehicle_lifetime_years: Vehicle (chassis + motor) lifetime for
+        amortisation in years.
+    :ivar motor_power_to_weight_ratio_kw_per_kg: Electric motor power-to-weight
+        ratio in kW/kg, used to derive motor mass.  ``None`` for diesel
+        (motor mass is fixed globally in ``OpenLcaData.diesel_motor_mass_kg``).
+    :ivar average_consumption_kwh_per_km: Average energy consumption in kWh/km for LCA.
+    :ivar diesel_consumption_kg_per_km: Average diesel consumption in kg/km,
+        or ``None`` for BEB.
     """
 
     motor_rated_power_kw: float
@@ -601,12 +558,10 @@ class VehicleTypeOverrides:
 class ChargingPointTypeOverrides:
     """Per-type overrides for charging-point infrastructure LCA parameters.
 
-    Attributes:
-        infrastructure_lifetime_years: Infrastructure amortisation lifetime
-            in years.
-        foundation_volume_per_point_m3: Concrete foundation volume per
-            charging point in m³ (typically non-zero for outdoor opportunity
-            chargers, zero for indoor depot chargers).
+    :ivar infrastructure_lifetime_years: Infrastructure amortisation lifetime in years.
+    :ivar foundation_volume_per_point_m3: Concrete foundation volume per
+        charging point in m³ (typically non-zero for outdoor opportunity
+        chargers, zero for indoor depot chargers).
     """
 
     infrastructure_lifetime_years: float
@@ -632,21 +587,18 @@ def _create_vehicle_type_lca_params_beb(
 ) -> VehicleTypeLcaParams:
     """Create LCA parameters for a battery-electric vehicle type.
 
-    Args:
-        chassis_ef_per_kg: Chassis emission factors per kg.
-        motor_ef_per_kg: Electric motor emission factors per kg.
-        motor_rated_power_kw: Rated motor power in kW.
-        motor_power_to_weight_ratio: Motor power-to-weight ratio (kW/kg).
-        electricity_ef_per_kwh: Grid electricity emission factors per kWh.
-        maintenance_beb_per_year: Annual maintenance emissions per vehicle.
-        average_consumption_kwh_per_km: Average energy consumption in
-            kWh/km for LCA purposes.
-        vehicle_lifetime_years: Vehicle lifetime in years.
-        efficiency_mv_to_lv: MV->LV transformer efficiency.
-        efficiency_lv_ac_to_dc: AC/DC rectification efficiency.
-
-    Returns:
-        A validated ``VehicleTypeLcaParams`` for a BEB.
+    :param chassis_ef_per_kg: Chassis emission factors per kg.
+    :param motor_ef_per_kg: Electric motor emission factors per kg.
+    :param motor_rated_power_kw: Rated motor power in kW.
+    :param motor_power_to_weight_ratio: Motor power-to-weight ratio (kW/kg).
+    :param electricity_ef_per_kwh: Grid electricity emission factors per kWh.
+    :param maintenance_beb_per_year: Annual maintenance emissions per vehicle.
+    :param average_consumption_kwh_per_km: Average energy consumption in
+        kWh/km for LCA purposes.
+    :param vehicle_lifetime_years: Vehicle lifetime in years.
+    :param efficiency_mv_to_lv: MV->LV transformer efficiency.
+    :param efficiency_lv_ac_to_dc: AC/DC rectification efficiency.
+    :returns: A validated ``VehicleTypeLcaParams`` for a BEB.
     """
     return VehicleTypeLcaParams(
         chassis_emission_factors_per_kg=chassis_ef_per_kg,
@@ -680,23 +632,18 @@ def _create_vehicle_type_lca_params_diesel(
 ) -> VehicleTypeLcaParams:
     """Create LCA parameters for a diesel vehicle type.
 
-    Args:
-        chassis_ef_per_kg: Chassis emission factors per kg.
-        motor_ef_per_unit: Diesel motor emission factors (per complete
-            motor).
-        motor_mass_kg: Diesel motor mass in kg.
-        diesel_ef_per_kg: Well-to-wheel emissions per kg diesel
-            (production + combustion combined).
-        maintenance_diesel_per_year: Annual maintenance emissions per
-            vehicle.
-        average_consumption_kwh_per_km: Average energy consumption in
-            kWh/km (for comparability; not used in diesel energy calc).
-        diesel_consumption_kg_per_km: Diesel consumption in kg/km.
-        motor_rated_power_kw: Rated motor power in kW.
-        vehicle_lifetime_years: Vehicle lifetime in years.
-
-    Returns:
-        A validated ``VehicleTypeLcaParams`` for an ICEB.
+    :param chassis_ef_per_kg: Chassis emission factors per kg.
+    :param motor_ef_per_unit: Diesel motor emission factors (per complete motor).
+    :param motor_mass_kg: Diesel motor mass in kg.
+    :param diesel_ef_per_kg: Well-to-wheel emissions per kg diesel
+        (production + combustion combined).
+    :param maintenance_diesel_per_year: Annual maintenance emissions per vehicle.
+    :param average_consumption_kwh_per_km: Average energy consumption in
+        kWh/km (for comparability; not used in diesel energy calc).
+    :param diesel_consumption_kg_per_km: Diesel consumption in kg/km.
+    :param motor_rated_power_kw: Rated motor power in kW.
+    :param vehicle_lifetime_years: Vehicle lifetime in years.
+    :returns: A validated ``VehicleTypeLcaParams`` for an ICEB.
     """
     return VehicleTypeLcaParams(
         chassis_emission_factors_per_kg=chassis_ef_per_kg,
@@ -723,13 +670,9 @@ def _create_battery_type_lca_params(
 ) -> BatteryTypeLcaParams:
     """Create LCA parameters for a battery type.
 
-    Args:
-        emission_factors_per_kg: Prod+EoL emissions per kg of battery
-            pack.
-        battery_lifetime_years: Battery lifetime for LCA amortisation.
-
-    Returns:
-        A ``BatteryTypeLcaParams``.
+    :param emission_factors_per_kg: Prod+EoL emissions per kg of battery pack.
+    :param battery_lifetime_years: Battery lifetime for LCA amortisation.
+    :returns: A ``BatteryTypeLcaParams``.
     """
     return BatteryTypeLcaParams(
         emission_factors_per_kg=emission_factors_per_kg,
@@ -750,26 +693,20 @@ def _create_charging_point_type_lca_params(
 ) -> ChargingPointTypeLcaParams:
     """Create LCA parameters for a charging point type.
 
-    Args:
-        control_unit_emissions: Per-unit emissions for one control unit.
-        power_unit_emission: Per-unit emissions for one power unit at its
-            reference power.
-        power_unit_rated_power_kw: Rated power of the reference power unit
-            in kW; also used as the reference power for scaling.
-        user_unit_emission: Per-unit emissions for one user unit (plug).
-        transformer_emissions: Per-unit emissions for one transformer at its
-            reference power.
-        transformer_ref_power_kw: Reference power of the transformer LCA
-            dataset in kW; used as the denominator in the 0.8-exponent
-            scaling law.
-        concrete_emissions_per_m3: Per-m3 emissions for concrete
-            foundation.
-        foundation_volume_per_point_m3: Concrete volume per charging
-            point in m3.
-        infrastructure_lifetime_years: Lifetime for amortisation.
-
-    Returns:
-        A ``ChargingPointTypeLcaParams``.
+    :param control_unit_emissions: Per-unit emissions for one control unit.
+    :param power_unit_emission: Per-unit emissions for one power unit at its
+        reference power.
+    :param power_unit_rated_power_kw: Rated power of the reference power unit
+        in kW; also used as the reference power for scaling.
+    :param user_unit_emission: Per-unit emissions for one user unit (plug).
+    :param transformer_emissions: Per-unit emissions for one transformer at its
+        reference power.
+    :param transformer_ref_power_kw: Reference power of the transformer LCA
+        dataset in kW; used as the denominator in the 0.8-exponent scaling law.
+    :param concrete_emissions_per_m3: Per-m3 emissions for concrete foundation.
+    :param foundation_volume_per_point_m3: Concrete volume per charging point in m3.
+    :param infrastructure_lifetime_years: Lifetime for amortisation.
+    :returns: A ``ChargingPointTypeLcaParams``.
     """
     return ChargingPointTypeLcaParams(
         control_unit_emissions=control_unit_emissions,
@@ -803,25 +740,24 @@ def populate_lca_params_from_data(
     ``ChargingPointTypeLcaParams`` and writes the resulting dicts to the
     JSONB columns.
 
-    Note: identical ``ChargingPointTypeLcaParams`` are applied to every
-    ``ChargingPointType`` in the scenario (depot and opportunity are not
-    differentiated).
+    .. note::
 
-    Args:
-        session: SQLAlchemy session connected to an eflips-model database.
-        scenario_id: ID of the scenario whose entities to populate.
-        open_lca_data: The openLCA dataset.
-        year: Calendar year for year-specific values (electricity mix).
-        vehicle_type_overrides: Per-vehicle-type overrides, keyed by
-            ``VehicleType.name_short``.
-        cpt_overrides: Infrastructure lifetime and foundation volume, read
-            from ``lca_overrides.json``.  Required when the scenario has
-            any ``ChargingPointType`` rows; may be ``None`` for
-            diesel-only scenarios.
+        Identical ``ChargingPointTypeLcaParams`` are applied to every
+        ``ChargingPointType`` in the scenario (depot and opportunity are not
+        differentiated).
 
-    Raises:
-        ValueError: If the scenario has ``ChargingPointType`` rows but
-            ``cpt_overrides`` is ``None``.
+    :param session: SQLAlchemy session connected to an eflips-model database.
+    :param scenario_id: ID of the scenario whose entities to populate.
+    :param open_lca_data: The openLCA dataset.
+    :param year: Calendar year for year-specific values (electricity mix).
+    :param vehicle_type_overrides: Per-vehicle-type overrides, keyed by
+        ``VehicleType.name_short``.
+    :param cpt_overrides: Infrastructure lifetime and foundation volume, read
+        from ``lca_overrides.json``.  Required when the scenario has
+        any ``ChargingPointType`` rows; may be ``None`` for
+        diesel-only scenarios.
+    :raises ValueError: If the scenario has ``ChargingPointType`` rows but
+        ``cpt_overrides`` is ``None``.
     """
     from eflips.model import BatteryType, ChargingPointType, VehicleType
 
@@ -897,23 +833,23 @@ def init_lca_params(
     writes ``VehicleTypeLcaParams``, ``BatteryTypeLcaParams``, and
     ``ChargingPointTypeLcaParams`` to the corresponding JSONB columns.
 
-    Pre-flight validation (warns + returns ``None`` without writing):
-    - Any BEB ``VehicleType`` in the scenario lacks a ``name_short`` entry
-      in ``vehicle_type_overrides``.
+    Pre-flight validation warns and returns ``None`` without writing if any
+    BEB ``VehicleType`` in the scenario lacks a ``name_short`` entry in
+    ``vehicle_type_overrides``.
 
-    Note: All ``ChargingPointType`` rows in the scenario receive identical
-    params (depot vs. opportunity not yet differentiated).  The opportunity
-    overrides entry is used if present, otherwise the first available entry.
+    .. note::
 
-    Args:
-        scenario: A :class:`~eflips.model.Scenario` instance, an ``int``
-            scenario id, or any object with an ``id`` attribute.
-        lca_json_path: Path to the openLCA emission-factor JSON
-            (``lca.json``).
-        overrides_json_path: Path to the per-scenario overrides JSON
-            (``lca_overrides.json``).
-        database_url: Database URL; falls back to ``$DATABASE_URL`` when
-            ``scenario`` is not already bound to a session.
+        All ``ChargingPointType`` rows in the scenario receive identical
+        params (depot vs. opportunity not yet differentiated).  The opportunity
+        overrides entry is used if present, otherwise the first available entry.
+
+    :param scenario: A :class:`~eflips.model.Scenario` instance, an ``int``
+        scenario id, or any object with an ``id`` attribute.
+    :param lca_json_path: Path to the openLCA emission-factor JSON (``lca.json``).
+    :param overrides_json_path: Path to the per-scenario overrides JSON
+        (``lca_overrides.json``).
+    :param database_url: Database URL; falls back to ``$DATABASE_URL`` when
+        ``scenario`` is not already bound to a session.
     """
     from eflips.impact.utils.session import create_session
 

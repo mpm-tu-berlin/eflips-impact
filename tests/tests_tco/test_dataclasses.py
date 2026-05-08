@@ -141,7 +141,12 @@ def test_cpt_roundtrip() -> None:
 
 
 def test_cpt_from_dict() -> None:
-    d = {"type": "opportunity", "procurement_cost": 250_000.0, "useful_life": 20, "cost_escalation": 0.0}
+    d = {
+        "type": "opportunity",
+        "procurement_cost": 250_000.0,
+        "useful_life": 20,
+        "cost_escalation": 0.0,
+    }
     p = ChargingPointTypeTCOParameter.from_dict(d)
     assert p.type == "opportunity"
 
@@ -160,7 +165,13 @@ def test_scenario_to_dict_includes_eta_avail() -> None:
         fuel_cost={"diesel": 1.0, "electricity": 0.15},
         vehicle_maint_cost={"diesel": 0.5, "electricity": 0.20},
         infra_maint_cost=5000.0,
-        cost_escalation_rate={"general": 0.02, "staff": 0.02, "diesel": 0.07, "electricity": 0.03, "insurance": 0.02},
+        cost_escalation_rate={
+            "general": 0.02,
+            "staff": 0.02,
+            "diesel": 0.07,
+            "electricity": 0.03,
+            "insurance": 0.02,
+        },
         insurance=3000.0,
         taxes=0.0,
         eta_avail=0.9,
@@ -179,7 +190,13 @@ def test_scenario_default_eta_avail() -> None:
         fuel_cost={"diesel": 1.0, "electricity": 0.15},
         vehicle_maint_cost={"diesel": 0.5, "electricity": 0.20},
         infra_maint_cost=5000.0,
-        cost_escalation_rate={"general": 0.02, "staff": 0.02, "diesel": 0.07, "electricity": 0.03, "insurance": 0.02},
+        cost_escalation_rate={
+            "general": 0.02,
+            "staff": 0.02,
+            "diesel": 0.07,
+            "electricity": 0.03,
+            "insurance": 0.02,
+        },
         insurance=3000.0,
         taxes=0.0,
     )

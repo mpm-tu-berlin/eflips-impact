@@ -31,7 +31,9 @@ def test_scaling_one_day() -> None:
 def test_scaling_one_year() -> None:
     start = datetime(2025, 1, 1, tzinfo=timezone.utc)
     end = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    assert _annual_scaling_factor((start, end)) == pytest.approx(365.0 / 365.0, rel=1e-3)
+    assert _annual_scaling_factor((start, end)) == pytest.approx(
+        365.0 / 365.0, rel=1e-3
+    )
 
 
 def test_scaling_two_days() -> None:
@@ -152,5 +154,7 @@ def test_terminal_station_ids_extracted(db_session: Session) -> None:
 
 def test_eta_avail_stored(db_session: Session) -> None:
     window = (SIM_START, SIM_END)
-    data = extract_simulation_data(db_session, SCENARIO_ID, window, window, eta_avail=0.85)
+    data = extract_simulation_data(
+        db_session, SCENARIO_ID, window, window, eta_avail=0.85
+    )
     assert data.eta_avail == pytest.approx(0.85)

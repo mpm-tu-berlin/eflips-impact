@@ -31,11 +31,8 @@ class ImpactVector:
     def _check_compatible(self, other: ImpactVector) -> None:
         """Verify that two ImpactVectors are of the same concrete type.
 
-        Args:
-            other: The other ImpactVector to compare against.
-
-        Raises:
-            TypeError: If the types do not match.
+        :param other: The other ImpactVector to compare against.
+        :raises TypeError: If the types do not match.
         """
         if type(self) is not type(other):
             raise TypeError(
@@ -45,11 +42,8 @@ class ImpactVector:
     def __add__(self: _IV, other: ImpactVector) -> _IV:
         """Element-wise addition of two impact vectors.
 
-        Args:
-            other: Another ImpactVector of the same concrete type.
-
-        Returns:
-            A new ImpactVector with element-wise sums.
+        :param other: Another ImpactVector of the same concrete type.
+        :returns: A new ImpactVector with element-wise sums.
         """
         self._check_compatible(other)
         return type(self)(
@@ -62,11 +56,8 @@ class ImpactVector:
     def __sub__(self: _IV, other: ImpactVector) -> _IV:
         """Element-wise subtraction of two impact vectors.
 
-        Args:
-            other: Another ImpactVector of the same concrete type.
-
-        Returns:
-            A new ImpactVector with element-wise differences.
+        :param other: Another ImpactVector of the same concrete type.
+        :returns: A new ImpactVector with element-wise differences.
         """
         self._check_compatible(other)
         return type(self)(
@@ -79,11 +70,8 @@ class ImpactVector:
     def __mul__(self: _IV, scalar: float) -> _IV:
         """Multiply all impact categories by a scalar.
 
-        Args:
-            scalar: The scalar multiplier.
-
-        Returns:
-            A new ImpactVector with all fields multiplied.
+        :param scalar: The scalar multiplier.
+        :returns: A new ImpactVector with all fields multiplied.
         """
         return type(self)(
             **{f.name: getattr(self, f.name) * scalar for f in dc_fields(self)}
@@ -92,22 +80,16 @@ class ImpactVector:
     def __rmul__(self: _IV, scalar: float) -> _IV:
         """Right-multiply (scalar * vector).
 
-        Args:
-            scalar: The scalar multiplier.
-
-        Returns:
-            A new ImpactVector with all fields multiplied.
+        :param scalar: The scalar multiplier.
+        :returns: A new ImpactVector with all fields multiplied.
         """
         return self.__mul__(scalar)
 
     def __truediv__(self: _IV, scalar: float) -> _IV:
         """Divide all impact categories by a scalar.
 
-        Args:
-            scalar: The scalar divisor.
-
-        Returns:
-            A new ImpactVector with all fields divided.
+        :param scalar: The scalar divisor.
+        :returns: A new ImpactVector with all fields divided.
         """
         return type(self)(
             **{f.name: getattr(self, f.name) / scalar for f in dc_fields(self)}
@@ -116,16 +98,14 @@ class ImpactVector:
     def __neg__(self: _IV) -> _IV:
         """Negate all impact categories.
 
-        Returns:
-            A new ImpactVector with all fields negated.
+        :returns: A new ImpactVector with all fields negated.
         """
         return type(self)(**{f.name: -getattr(self, f.name) for f in dc_fields(self)})
 
     def to_dict(self) -> dict[str, float]:
         """Serialize to a plain dictionary suitable for JSONB storage.
 
-        Returns:
-            A dictionary mapping field names to their float values.
+        :returns: A dictionary mapping field names to their float values.
         """
         return {f.name: getattr(self, f.name) for f in dc_fields(self)}
 
@@ -133,11 +113,8 @@ class ImpactVector:
     def from_dict(cls: type[_IV], data: dict[str, Any]) -> _IV:
         """Deserialize from a dictionary.
 
-        Args:
-            data: A dictionary mapping field names to float values.
-
-        Returns:
-            An ImpactVector instance populated from the dictionary.
+        :param data: A dictionary mapping field names to float values.
+        :returns: An ImpactVector instance populated from the dictionary.
         """
         field_names = {f.name for f in dc_fields(cls)}
         filtered = {k: float(v) for k, v in data.items() if k in field_names}
@@ -147,8 +124,7 @@ class ImpactVector:
     def zero(cls: type[_IV]) -> _IV:
         """Create a zero-valued impact vector.
 
-        Returns:
-            An ImpactVector with all fields set to ``0.0``.
+        :returns: An ImpactVector with all fields set to ``0.0``.
         """
         return cls(**{f.name: 0.0 for f in dc_fields(cls)})
 

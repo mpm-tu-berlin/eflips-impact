@@ -45,11 +45,10 @@ logger = logging.getLogger(__name__)
 class AreaSimData:
     """Extracted simulation data for one depot charging area.
 
-    Attributes:
-        area_id: The ``Area`` primary key.
-        peak_charging_power_kw: Maximum simultaneous charging power in kW.
-        peak_simultaneous_vehicles: Maximum number of vehicles present at
-            the same time (``occupancy_total``).
+    :ivar area_id: The ``Area`` primary key.
+    :ivar peak_charging_power_kw: Maximum simultaneous charging power in kW.
+    :ivar peak_simultaneous_vehicles: Maximum number of vehicles present at
+        the same time (``occupancy_total``).
     """
 
     area_id: int
@@ -61,11 +60,10 @@ class AreaSimData:
 class StationSimData:
     """Extracted simulation data for one terminal charging station.
 
-    Attributes:
-        station_id: The ``Station`` primary key.
-        peak_charging_power_kw: Maximum simultaneous charging power in kW.
-        peak_simultaneous_vehicles: Maximum number of vehicles present at
-            the same time (``occupancy_total``).
+    :ivar station_id: The ``Station`` primary key.
+    :ivar peak_charging_power_kw: Maximum simultaneous charging power in kW.
+    :ivar peak_simultaneous_vehicles: Maximum number of vehicles present at
+        the same time (``occupancy_total``).
     """
 
     station_id: int
@@ -100,16 +98,11 @@ def _simulation_start_and_end(
     - ``overall_end = Jan 21 00:00`` → D = Jan 20 ✓
     - ``overall_end = Jan 20 22:00`` → D = Jan 19 ✓  (Jan 20 not fully covered)
 
-    Args:
-        session: SQLAlchemy session.
-        scenario_id: Scenario to query.
-
-    Returns:
-        Pair ``(start_time, end_time)`` with ``start_time < end_time``.
-
-    Raises:
-        ValueError: If the scenario contains no trips, or if the trip span
-            covers fewer than two calendar days (no full day enclosed).
+    :param session: SQLAlchemy session.
+    :param scenario_id: Scenario to query.
+    :returns: Pair ``(start_time, end_time)`` with ``start_time < end_time``.
+    :raises ValueError: If the scenario contains no trips, or if the trip span
+        covers fewer than two calendar days (no full day enclosed).
     """
     row = session.execute(
         select(func.min(Trip.departure_time), func.max(Trip.arrival_time)).where(
@@ -146,15 +139,10 @@ def _simulation_start_and_end(
 def _annual_scaling_factor(scaling_window: tuple[datetime, datetime]) -> float:
     """Compute the factor to scale simulation-period values to annual.
 
-    Args:
-        scaling_window: ``(start, end)`` pair defining the reference period
-            for annualisation.
-
-    Returns:
-        ``365.0 / window_duration_days``.
-
-    Raises:
-        ValueError: If the window duration is non-positive.
+    :param scaling_window: ``(start, end)`` pair defining the reference period
+        for annualisation.
+    :returns: ``365.0 / window_duration_days``.
+    :raises ValueError: If the window duration is non-positive.
     """
     sim_start_time, sim_end_time = scaling_window
     duration = sim_end_time - sim_start_time
@@ -179,16 +167,13 @@ def extract_vehicle_and_revenue_kilometers(
 ) -> dict[int, tuple[float, float]]:
     """Query annual vehicle-km and revenue-km per vehicle type.
 
-    Args:
-        session: SQLAlchemy session.
-        scenario_id: Scenario to query.
-        extraction_window: ``(start, end)`` pair used to filter trips included
-            in the calculation.
-        scaling_window: ``(start, end)`` pair used to compute the
-            annualisation factor via :func:`_annual_scaling_factor`.
-
-    Returns:
-        Dict mapping ``VehicleType.id`` to
+    :param session: SQLAlchemy session.
+    :param scenario_id: Scenario to query.
+    :param extraction_window: ``(start, end)`` pair used to filter trips included
+        in the calculation.
+    :param scaling_window: ``(start, end)`` pair used to compute the
+        annualisation factor via :func:`_annual_scaling_factor`.
+    :returns: Dict mapping ``VehicleType.id`` to
         ``(annual_vehicle_km, annual_revenue_km)``.
     """
     sim_start_time, sim_end_time = extraction_window
@@ -228,13 +213,10 @@ def extract_vehicle_count_per_type(
 ) -> dict[int, int]:
     """Count distinct vehicles operated per vehicle type within a time window.
 
-    Args:
-        session: SQLAlchemy session.
-        scenario_id: Scenario to query.
-        extraction_window: ``(start, end)`` pair used to filter trips.
-
-    Returns:
-        Dict mapping ``VehicleType.id`` to the count of distinct vehicles
+    :param session: SQLAlchemy session.
+    :param scenario_id: Scenario to query.
+    :param extraction_window: ``(start, end)`` pair used to filter trips.
+    :returns: Dict mapping ``VehicleType.id`` to the count of distinct vehicles
         that operated at least one trip within the window.
     """
     sim_start_time, sim_end_time = extraction_window
@@ -269,13 +251,10 @@ def extract_area_peaks(
     Only includes areas whose associated ``VehicleType`` has
     ``energy_source == BATTERY_ELECTRIC``.
 
-    Args:
-        session: SQLAlchemy session.
-        scenario_id: Scenario to query.
-        extraction_window: ``(start, end)`` pair used to filter events.
-
-    Returns:
-        Dict mapping ``Area.id`` to :class:`AreaSimData`.
+    :param session: SQLAlchemy session.
+    :param scenario_id: Scenario to query.
+    :param extraction_window: ``(start, end)`` pair used to filter events.
+    :returns: Dict mapping ``Area.id`` to :class:`AreaSimData`.
     """
     sim_start_time, sim_end_time = extraction_window
     areas = (
@@ -320,13 +299,10 @@ def extract_station_peaks(
     Only processes electrified stations that are **not** associated with a
     depot (i.e. ``Depot.station_id`` does not reference this station).
 
-    Args:
-        session: SQLAlchemy session.
-        scenario_id: Scenario to query.
-        extraction_window: ``(start, end)`` pair used to filter events.
-
-    Returns:
-        Dict mapping ``Station.id`` to :class:`StationSimData`.
+    :param session: SQLAlchemy session.
+    :param scenario_id: Scenario to query.
+    :param extraction_window: ``(start, end)`` pair used to filter events.
+    :returns: Dict mapping ``Station.id`` to :class:`StationSimData`.
     """
     sim_start_time, sim_end_time = extraction_window
     stations = (
@@ -377,15 +353,10 @@ def get_extraction_window(
     all events in the scenario.  This spans the full simulation including
     depot charging and standby periods beyond the first/last trip times.
 
-    Args:
-        session: SQLAlchemy session.
-        scenario_id: Scenario to query.
-
-    Returns:
-        ``(min_time_start, max_time_end)`` across all events.
-
-    Raises:
-        ValueError: If the scenario contains no events.
+    :param session: SQLAlchemy session.
+    :param scenario_id: Scenario to query.
+    :returns: ``(min_time_start, max_time_end)`` across all events.
+    :raises ValueError: If the scenario contains no events.
     """
     row = session.execute(
         select(func.min(Event.time_start), func.max(Event.time_end)).where(
@@ -414,16 +385,11 @@ def get_scaling_window(
     last trip departs.  The result is suitable to pass as ``scaling_window``
     to :func:`extract_vehicle_and_revenue_kilometers` and related functions.
 
-    Args:
-        session: SQLAlchemy session.
-        scenario_id: Scenario to query.
-
-    Returns:
-        ``(min_departure_time, max_departure_time)``.
-
-    Raises:
-        ValueError: If the scenario contains no trips, or if all trips share
-            the same departure time (degenerate window).
+    :param session: SQLAlchemy session.
+    :param scenario_id: Scenario to query.
+    :returns: ``(min_departure_time, max_departure_time)``.
+    :raises ValueError: If the scenario contains no trips, or if all trips share
+        the same departure time (degenerate window).
     """
     row = session.execute(
         select(func.min(Trip.departure_time), func.max(Trip.departure_time)).where(
@@ -455,13 +421,12 @@ def get_scaling_window(
 class VehicleTypeSimData:
     """Extracted simulation data for one vehicle type.
 
-    Attributes:
-        vehicle_type_id: The ``VehicleType`` primary key.
-        annual_vehicle_kilometers: Total vehicle-km (all trips), annualised.
-        annual_revenue_kilometers: Total revenue vehicle-km (passenger trips
-            only), annualised.
-        n_ready: Number of operationally ready vehicles (distinct vehicles
-            used in rotations within the simulation window).
+    :ivar vehicle_type_id: The ``VehicleType`` primary key.
+    :ivar annual_vehicle_kilometers: Total vehicle-km (all trips), annualised.
+    :ivar annual_revenue_kilometers: Total revenue vehicle-km (passenger trips
+        only), annualised.
+    :ivar n_ready: Number of operationally ready vehicles (distinct vehicles
+        used in rotations within the simulation window).
     """
 
     vehicle_type_id: int
@@ -474,12 +439,10 @@ class VehicleTypeSimData:
 class ScenarioSimData:
     """All extracted simulation data for a scenario.
 
-    Attributes:
-        vehicle_type_data: Per-vehicle-type data, keyed by
-            ``VehicleType.id``.
-        area_data: Per-depot-area data, keyed by ``Area.id``.
-        station_data: Per-terminal-station data, keyed by ``Station.id``.
-        eta_avail: Technical availability factor.
+    :ivar vehicle_type_data: Per-vehicle-type data, keyed by ``VehicleType.id``.
+    :ivar area_data: Per-depot-area data, keyed by ``Area.id``.
+    :ivar station_data: Per-terminal-station data, keyed by ``Station.id``.
+    :ivar eta_avail: Technical availability factor.
     """
 
     vehicle_type_data: dict[int, VehicleTypeSimData] = field(default_factory=dict)
@@ -500,20 +463,15 @@ def extract_simulation_data(
     Queries the eflips-model database for vehicle/revenue kilometres,
     fleet size, and peak charging infrastructure utilisation.
 
-    Args:
-        session: SQLAlchemy session connected to an eflips-model database.
-        scenario_id: ID of the scenario to analyse.
-        extraction_window: ``(start, end)`` pair used to filter which trips
-            and events are included in the query.
-        scaling_window: ``(start, end)`` pair used to compute the
-            annualisation factor.
-        eta_avail: Technical availability factor (default ``0.9``).
-
-    Returns:
-        A :class:`ScenarioSimData` containing all extracted values.
-
-    Raises:
-        ValueError: If either window has non-positive duration.
+    :param session: SQLAlchemy session connected to an eflips-model database.
+    :param scenario_id: ID of the scenario to analyse.
+    :param extraction_window: ``(start, end)`` pair used to filter which trips
+        and events are included in the query.
+    :param scaling_window: ``(start, end)`` pair used to compute the
+        annualisation factor.
+    :param eta_avail: Technical availability factor (default ``0.9``).
+    :returns: A :class:`ScenarioSimData` containing all extracted values.
+    :raises ValueError: If either window has non-positive duration.
     """
     km_data = extract_vehicle_and_revenue_kilometers(
         session, scenario_id, extraction_window, scaling_window

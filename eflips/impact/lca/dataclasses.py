@@ -24,11 +24,8 @@ def _serialise_maintenance(
 ) -> dict[str, dict[str, float]]:
     """Convert an ``EnergySource``-keyed dict to a JSON-safe form.
 
-    Args:
-        data: Maintenance emissions keyed by ``EnergySource``.
-
-    Returns:
-        A dict with string keys (enum member names) and nested dicts.
+    :param data: Maintenance emissions keyed by ``EnergySource``.
+    :returns: A dict with string keys (enum member names) and nested dicts.
     """
     return {k.name: v.to_dict() for k, v in data.items()}
 
@@ -38,11 +35,8 @@ def _deserialise_maintenance(
 ) -> dict[EnergySource, DefaultImpactVector]:
     """Reconstruct an ``EnergySource``-keyed dict from JSON.
 
-    Args:
-        raw: A dict with string keys and nested impact-vector dicts.
-
-    Returns:
-        A dict keyed by ``EnergySource`` enum members.
+    :param raw: A dict with string keys and nested impact-vector dicts.
+    :returns: A dict keyed by ``EnergySource`` enum members.
     """
     return {EnergySource[k]: DefaultImpactVector.from_dict(v) for k, v in raw.items()}
 
@@ -52,11 +46,8 @@ def _iv_or_none_to_dict(
 ) -> dict[str, float] | None:
     """Serialize an optional ImpactVector.
 
-    Args:
-        iv: An ImpactVector or ``None``.
-
-    Returns:
-        A dict or ``None``.
+    :param iv: An ImpactVector or ``None``.
+    :returns: A dict or ``None``.
     """
     return iv.to_dict() if iv is not None else None
 
@@ -66,11 +57,8 @@ def _iv_or_none_from_dict(
 ) -> DefaultImpactVector | None:
     """Deserialize an optional ImpactVector.
 
-    Args:
-        raw: A dict or ``None``.
-
-    Returns:
-        A ``DefaultImpactVector`` or ``None``.
+    :param raw: A dict or ``None``.
+    :returns: A ``DefaultImpactVector`` or ``None``.
     """
     return DefaultImpactVector.from_dict(raw) if raw is not None else None
 
@@ -151,10 +139,9 @@ class VehicleTypeLcaParams:
     def __post_init__(self, energy_source: EnergySource | None) -> None:
         """Validate field consistency with the vehicle's energy source.
 
-        Args:useful_life
-            energy_source: The vehicle type's energy source, used for
-                cross-field validation.  ``None`` skips validation (e.g.
-                during raw deserialisation).
+        :param energy_source: The vehicle type's energy source, used for
+            cross-field validation.  ``None`` skips validation (e.g.
+            during raw deserialisation).
         """
         if energy_source is None:
             return
@@ -206,8 +193,7 @@ class VehicleTypeLcaParams:
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a dict suitable for JSONB storage.
 
-        Returns:
-            A JSON-compatible dictionary.
+        :returns: A JSON-compatible dictionary.
         """
         return {
             "chassis_emission_factors_per_kg": self.chassis_emission_factors_per_kg.to_dict(),
@@ -242,12 +228,9 @@ class VehicleTypeLcaParams:
     ) -> VehicleTypeLcaParams:
         """Deserialize from a JSONB dict.
 
-        Args:
-            data: The raw dictionary from the JSONB column.
-            energy_source: Optional energy source for validation.
-
-        Returns:
-            A populated ``VehicleTypeLcaParams``.
+        :param data: The raw dictionary from the JSONB column.
+        :param energy_source: Optional energy source for validation.
+        :returns: A populated ``VehicleTypeLcaParams``.
         """
         return cls(
             chassis_emission_factors_per_kg=DefaultImpactVector.from_dict(
@@ -309,10 +292,8 @@ class VehicleTypeLcaParams:
 class BatteryTypeLcaParams:
     """LCA parameters stored on ``BatteryType.lca_params``.
 
-    Attributes:
-        emission_factors_per_kg: Prod+EoL emissions per kg of battery pack.
-        battery_lifetime_years: Battery lifetime for LCA amortisation
-            (default 8).
+    :ivar emission_factors_per_kg: Prod+EoL emissions per kg of battery pack.
+    :ivar battery_lifetime_years: Battery lifetime for LCA amortisation (default 8).
     """
 
     emission_factors_per_kg: DefaultImpactVector
@@ -321,8 +302,7 @@ class BatteryTypeLcaParams:
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a dict suitable for JSONB storage.
 
-        Returns:
-            A JSON-compatible dictionary.
+        :returns: A JSON-compatible dictionary.
         """
         return {
             "emission_factors_per_kg": self.emission_factors_per_kg.to_dict(),
@@ -333,11 +313,8 @@ class BatteryTypeLcaParams:
     def from_dict(cls, data: dict[str, Any]) -> BatteryTypeLcaParams:
         """Deserialize from a JSONB dict.
 
-        Args:
-            data: The raw dictionary from the JSONB column.
-
-        Returns:
-            A populated ``BatteryTypeLcaParams``.
+        :param data: The raw dictionary from the JSONB column.
+        :returns: A populated ``BatteryTypeLcaParams``.
         """
         return cls(
             emission_factors_per_kg=DefaultImpactVector.from_dict(
@@ -349,9 +326,8 @@ class BatteryTypeLcaParams:
     def check_tco_consistency(self, tco_useful_life: float | None) -> None:
         """Emit a warning if the TCO useful life differs from LCA lifetime.
 
-        Args:
-            tco_useful_life: The ``useful_life`` value from
-                ``BatteryType.tco_parameters``, or ``None`` if unset.
+        :param tco_useful_life: The ``useful_life`` value from
+            ``BatteryType.tco_parameters``, or ``None`` if unset.
         """
         if (
             tco_useful_life is not None
@@ -374,23 +350,20 @@ class BatteryTypeLcaParams:
 class ChargingPointTypeLcaParams:
     """LCA parameters stored on ``ChargingPointType.lca_params``.
 
-    Attributes:
-        control_unit_emissions: Per-unit emissions for one control unit.
-        power_unit_emission: Per-unit emissions for one power unit at its
-            reference power.
-        power_unit_rated_power_kw: Rated power of the reference power unit
-            in kW; used as the reference power for the 0.8-exponent scaling
-            law.
-        user_unit_emission: Per-unit emissions for one user unit (plug).
-        transformer_emissions: Per-unit emissions for one transformer at its
-            reference power.
-        transformer_ref_power_kw: Reference power for the transformer LCA
-            dataset in kW; used as the reference power for the 0.8-exponent
-            scaling law.
-        concrete_emissions_per_m3: Per-m³ emissions for concrete foundation.
-        foundation_volume_per_point_m3: Concrete volume per charging point
-            in m³ (terminal only).
-        infrastructure_lifetime_years: Lifetime for amortisation.
+    :ivar control_unit_emissions: Per-unit emissions for one control unit.
+    :ivar power_unit_emission: Per-unit emissions for one power unit at its
+        reference power.
+    :ivar power_unit_rated_power_kw: Rated power of the reference power unit
+        in kW; used as the reference power for the 0.8-exponent scaling law.
+    :ivar user_unit_emission: Per-unit emissions for one user unit (plug).
+    :ivar transformer_emissions: Per-unit emissions for one transformer at its
+        reference power.
+    :ivar transformer_ref_power_kw: Reference power for the transformer LCA
+        dataset in kW; used as the reference power for the 0.8-exponent scaling law.
+    :ivar concrete_emissions_per_m3: Per-m³ emissions for concrete foundation.
+    :ivar foundation_volume_per_point_m3: Concrete volume per charging point
+        in m³ (terminal only).
+    :ivar infrastructure_lifetime_years: Lifetime for amortisation.
     """
 
     control_unit_emissions: DefaultImpactVector
@@ -406,8 +379,7 @@ class ChargingPointTypeLcaParams:
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a dict suitable for JSONB storage.
 
-        Returns:
-            A JSON-compatible dictionary.
+        :returns: A JSON-compatible dictionary.
         """
         return {
             "control_unit_emissions": self.control_unit_emissions.to_dict(),
@@ -425,11 +397,8 @@ class ChargingPointTypeLcaParams:
     def from_dict(cls, data: dict[str, Any]) -> ChargingPointTypeLcaParams:
         """Deserialize from a JSONB dict.
 
-        Args:
-            data: The raw dictionary from the JSONB column.
-
-        Returns:
-            A populated ``ChargingPointTypeLcaParams``.
+        :param data: The raw dictionary from the JSONB column.
+        :returns: A populated ``ChargingPointTypeLcaParams``.
         """
         return cls(
             control_unit_emissions=DefaultImpactVector.from_dict(
@@ -439,7 +408,9 @@ class ChargingPointTypeLcaParams:
                 data["power_unit_emission"]
             ),
             power_unit_rated_power_kw=float(data["power_unit_rated_power_kw"]),
-            user_unit_emission=DefaultImpactVector.from_dict(data["user_unit_emission"]),
+            user_unit_emission=DefaultImpactVector.from_dict(
+                data["user_unit_emission"]
+            ),
             transformer_emissions=DefaultImpactVector.from_dict(
                 data["transformer_emissions"]
             ),
@@ -463,20 +434,19 @@ class ChargingPointTypeLcaParams:
 class LcaResult:
     """Output of :func:`eflips.lca.calculate_lca`.
 
-    Attributes:
-        production: Per-revenue-km production emissions, keyed by
-            ``VehicleType.id``.  Normalised by that type's own Nwkm.
-        use_phase: Per-revenue-km use-phase emissions, keyed by
-            ``VehicleType.id``.  Normalised by that type's own Nwkm.
-        infrastructure: Fleet-wide per-revenue-km infrastructure emissions.
-            Normalised by total fleet Nwkm.
-        total: Fleet-wide per-revenue-km total.  Production and use are
-            normalised by total fleet Nwkm (shared denominator), so this is
-            **not** equal to ``Σ production[t] + Σ use_phase[t] + infrastructure``
-            for multi-type fleets.
-        revenue_km: Annual revenue-kilometres per vehicle type, keyed by
-            ``VehicleType.id``.  Exposed so callers can reconstruct the
-            correct fleet-wide formula.
+    :ivar production: Per-revenue-km production emissions, keyed by
+        ``VehicleType.id``.  Normalised by that type's own Nwkm.
+    :ivar use_phase: Per-revenue-km use-phase emissions, keyed by
+        ``VehicleType.id``.  Normalised by that type's own Nwkm.
+    :ivar infrastructure: Fleet-wide per-revenue-km infrastructure emissions.
+        Normalised by total fleet Nwkm.
+    :ivar total: Fleet-wide per-revenue-km total.  Production and use are
+        normalised by total fleet Nwkm (shared denominator), so this is
+        **not** equal to ``Σ production[t] + Σ use_phase[t] + infrastructure``
+        for multi-type fleets.
+    :ivar revenue_km: Annual revenue-kilometres per vehicle type, keyed by
+        ``VehicleType.id``.  Exposed so callers can reconstruct the
+        correct fleet-wide formula.
     """
 
     production: dict[int, DefaultImpactVector] = field(default_factory=dict)

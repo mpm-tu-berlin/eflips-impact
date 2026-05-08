@@ -61,7 +61,9 @@ def test_scenario_params_written(fleet_session: Session, scenario: Scenario) -> 
 # ---------------------------------------------------------------------------
 
 
-def test_vehicle_type_params_written(fleet_session: Session, scenario: Scenario) -> None:
+def test_vehicle_type_params_written(
+    fleet_session: Session, scenario: Scenario
+) -> None:
     init_tco_parameters(
         scenario,
         vehicle_type_params=[
@@ -102,7 +104,9 @@ def test_unknown_vehicle_name_short_warns(
 # ---------------------------------------------------------------------------
 
 
-def test_battery_type_params_written(fleet_session: Session, scenario: Scenario) -> None:
+def test_battery_type_params_written(
+    fleet_session: Session, scenario: Scenario
+) -> None:
     init_tco_parameters(
         scenario,
         battery_type_params=[
@@ -217,7 +221,8 @@ def test_charging_infra_params_written(
 
     # All depot stations (via Depot.station_id) should have tco_parameters set.
     depot_station_ids = [
-        sid for (sid,) in fleet_session.query(Depot.station_id)
+        sid
+        for (sid,) in fleet_session.query(Depot.station_id)
         .filter(Depot.scenario_id == SCENARIO_ID)
         .all()
     ]
@@ -229,7 +234,8 @@ def test_charging_infra_params_written(
 
     # All opportunity-charging stations should have tco_parameters set.
     opp_station_ids = [
-        sid for (sid,) in fleet_session.query(distinct(Event.station_id))
+        sid
+        for (sid,) in fleet_session.query(distinct(Event.station_id))
         .filter(
             Event.scenario_id == SCENARIO_ID,
             Event.event_type == EventType.CHARGING_OPPORTUNITY,

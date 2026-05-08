@@ -248,12 +248,11 @@ class TcoParamSet:
     Not part of the public API — use :func:`init_tco_parameters_from_json`
     unless you need to inspect or modify parameters before writing to the DB.
 
-    Attributes:
-        scenario: Scenario-level financial parameters.
-        vehicle_types: Per-vehicle-type parameters.
-        battery_types: Per-battery-type parameters.
-        charging_point_types: Per-charging-point-type parameters.
-        charging_infrastructure: Per-charging-infrastructure parameters.
+    :ivar scenario: Scenario-level financial parameters.
+    :ivar vehicle_types: Per-vehicle-type parameters.
+    :ivar battery_types: Per-battery-type parameters.
+    :ivar charging_point_types: Per-charging-point-type parameters.
+    :ivar charging_infrastructure: Per-charging-infrastructure parameters.
     """
 
     scenario: ScenarioTCOParameter
@@ -266,11 +265,8 @@ class TcoParamSet:
     def from_json(cls, path: Union[str, Path]) -> "TcoParamSet":
         """Load a ``TcoParamSet`` from a JSON file.
 
-        Args:
-            path: Path to the JSON file.
-
-        Returns:
-            A ``TcoParamSet`` instance.
+        :param path: Path to the JSON file.
+        :returns: A ``TcoParamSet`` instance.
         """
         with open(path, "r", encoding="utf-8") as f:
             raw = json.load(f)
@@ -280,13 +276,10 @@ class TcoParamSet:
     def _from_raw(cls, raw: Dict[str, Any]) -> "TcoParamSet":
         """Construct a ``TcoParamSet`` from a parsed JSON dict.
 
-        Args:
-            raw: Dict with keys ``scenario``, ``vehicle_types``,
-                ``battery_types``, ``charging_point_types``,
-                ``charging_infrastructure``.
-
-        Returns:
-            A ``TcoParamSet`` instance.
+        :param raw: Dict with keys ``scenario``, ``vehicle_types``,
+            ``battery_types``, ``charging_point_types``,
+            ``charging_infrastructure``.
+        :returns: A ``TcoParamSet`` instance.
         """
         return cls(
             scenario=ScenarioTCOParameter.from_dict(raw["scenario"]),
