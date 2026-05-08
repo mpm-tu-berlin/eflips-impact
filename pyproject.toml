@@ -19,12 +19,20 @@ dev = [
     "black (>=26.1.0,<27.0.0)",
     "pre-commit (>=4.5.1,<5.0.0)",
     "pytest (>=9.0.2,<10.0.0)",
-    "pytest-pycharm (>=0.7.0,<0.8.0)"
+    "pytest-pycharm (>=0.7.0,<0.8.0)",
+    "sphinx (>=6.2.1)",
+    "sphinx-autoapi (>=3.0.0)"
 ]
 
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+
+
+[tool.poetry.group.dev.dependencies]
+sphinx = ">=6.2.1,<9"
+sphinx-autoapi = "^3.8.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
