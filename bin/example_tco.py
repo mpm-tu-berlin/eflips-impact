@@ -83,3 +83,9 @@ print()
 print(f"Project duration : {result.project_duration} years")
 print(f"Annual revenue-km: {result.annual_revenue_km:,.0f}")
 print(f"Total TCO (NPV)  : EUR {result.tco_over_project_duration:,.0f}")
+
+# ---------------------------------------------------------------------------
+# Step 5: Plot
+# ---------------------------------------------------------------------------
+result.plot(use_revenue_km=True, save_path="tco_by_type.png")
+print("Plot saved to tco_by_type.png")

@@ -248,6 +248,71 @@ class TCOResult:
         total_km = self.annual_revenue_km * self.project_duration
         return {k: v / total_km for k, v in self.tco_by_type.items()}
 
+    def plot(
+        self,
+        use_revenue_km: bool = True,
+        save_path: str = "tco_by_type.png",
+    ) -> None:
+        """Plot a stacked bar chart of TCO by cost category.
+
+        :param use_revenue_km: If ``True``, normalise by revenue-km; otherwise
+            by vehicle-km.
+        :param save_path: File path for the saved figure.
+        """
+        import matplotlib.pyplot as plt
+
+        color_map: Dict[Union[CapexItemType, OpexItemType], str] = {
+            OpexItemType.STAFF: "lightcoral",
+            OpexItemType.ENERGY: "lightcyan",
+            OpexItemType.MAINTENANCE: "lightyellow",
+            OpexItemType.OTHER: "lightpink",
+            CapexItemType.VEHICLE: "lightgray",
+            CapexItemType.BATTERY: "lightgreen",
+            CapexItemType.INFRASTRUCTURE: "skyblue",
+        }
+
+        per_km = (
+            self.tco_by_type_per_revenue_km
+            if use_revenue_km
+            else self.tco_by_type_per_vehicle_km
+        )
+        total = self.tco_per_revenue_km if use_revenue_km else self.tco_per_vehicle_km
+        km_label = "revenue-km" if use_revenue_km else "vehicle-km"
+
+        fig, ax = plt.subplots(figsize=(6, 8))
+        bottom = 0.0
+
+        for category, color in color_map.items():
+            cost = per_km.get(category, 0.0)
+            if cost == 0.0:
+                continue
+            bar = ax.bar(
+                "Total TCO",
+                cost,
+                bottom=bottom,
+                label=category.name,
+                width=0.2,
+                color=color,
+                edgecolor="gray",
+            )
+            ax.bar_label(bar, label_type="center", padding=3, fmt="%.2f")
+            bottom += cost
+
+        ax.text(
+            0,
+            total + 0.05,
+            str(round(total, 2)),
+            ha="center",
+            va="bottom",
+            fontweight="bold",
+        )
+        ax.set_ylabel(f"Specific Cost (EUR/{km_label})")
+        ax.set_xlim(left=-0.5, right=0.5)
+        ax.set_title("Total Cost of Ownership by Type")
+        ax.legend()
+        plt.savefig(save_path)
+        plt.close(fig)
+
 
 @dataclass
 class TcoParamSet:

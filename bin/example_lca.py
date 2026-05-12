@@ -94,3 +94,10 @@ for itype, iv in by_type.items():
 print(sep)
 print(f"\n{'Total (fleet):':<30} {total.gwp:>24.6f} kg CO₂-eq / Nwkm")
 print(f"{'Total fleet Nwkm/a:':<30} {total_rkm:>24.0f}")
+
+# ---------------------------------------------------------------------------
+# Step 5: Plot
+# ---------------------------------------------------------------------------
+result.plot_by_scope(save_path="lca_by_scope.png")
+result.plot_by_type(save_path="lca_by_type.png")
+print("Plots saved to lca_by_scope.png and lca_by_type.png")

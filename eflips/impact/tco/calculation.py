@@ -38,8 +38,6 @@ from eflips.impact.tco.cost_items import (
 from eflips.impact.tco.dataclasses import TCOResult
 from eflips.impact.utils import create_session
 
-import pandas as pd
-
 
 def _load_capex_items_vehicle(
     vehicle_types: List[VehicleType],
@@ -433,13 +431,11 @@ class TCOCalculator:
             self.inflation_rate = self.scenario.tco_parameters["inflation_rate"]
 
             self.result: Optional[TCOResult] = None
-            self.tco_by_item: Optional[pd.DataFrame] = None
 
     def calculate(self) -> TCOResult:
         """Calculate the total cost of ownership.
 
-        :returns: A :class:`TCOResult` with aggregated totals and per-type specific costs
-            (EUR/km). The detailed itemised breakdown is also stored in ``self.tco_by_item``.
+        :returns: A :class:`TCOResult` with aggregated totals and per-type specific costs.
         """
         list_of_items = []
         list_of_costs = []
@@ -474,9 +470,6 @@ class TCOCalculator:
 
         tco = total_capex + total_opex
 
-        self.tco_by_item = pd.DataFrame({"Item": list_of_items, "Cost": list_of_costs})
-        self.tco_by_item["type"] = self.tco_by_item["Item"].apply(lambda x: x.type)
-
         tco_by_type: dict[CapexItemType | OpexItemType, float] = {}
         for item, cost in zip(list_of_items, list_of_costs):
             tco_by_type[item.type] = tco_by_type.get(item.type, 0.0) + cost
@@ -488,82 +481,6 @@ class TCOCalculator:
             annual_vehicle_km=self.annual_vehicle_km,
         )
         return self.result
-
-    def visualize(self):
-        """Visualize the TCO results."""
-
-        import matplotlib.pyplot as plt
-
-        fig, ax = plt.subplots(figsize=(6, 8))
-        bottom = 0
-
-        category_color_mapping = {
-            OpexItemType.STAFF: "lightcoral",
-            OpexItemType.ENERGY: "lightcyan",
-            OpexItemType.MAINTENANCE: "lightyellow",
-            OpexItemType.OTHER: "lightpink",
-            CapexItemType.VEHICLE: "lightgray",
-            CapexItemType.BATTERY: "lightgreen",
-            CapexItemType.INFRASTRUCTURE: "skyblue",
-        }
-
-        def _fuel_tag(item_name: str) -> str:
-            if "(Diesel)" in item_name:
-                return "diesel"
-            if "(Electric)" in item_name:
-                return "electric"
-            return "other"
-
-        total_vehicle_km = self.annual_vehicle_km * self.project_duration
-        df = self.tco_by_item.copy()
-        df["Specific Cost"] = df["Cost"] / total_vehicle_km
-        df["fuel"] = df["Item"].apply(lambda x: _fuel_tag(x.name))
-
-        seen_labels = set()
-        for category, color in category_color_mapping.items():
-            cat_df = df[df["type"] == category]
-            if cat_df.empty:
-                continue
-            # electric/other first (solid), diesel second (hatched)
-            for fuel, hatch in [("electric", ""), ("other", ""), ("diesel", "///")]:
-                subset = cat_df[cat_df["fuel"] == fuel]
-                if subset.empty:
-                    continue
-                cost = subset["Specific Cost"].sum()
-                if fuel == "diesel":
-                    label = f"{category.name} (Diesel)"
-                elif fuel == "electric":
-                    label = f"{category.name} (Electric)"
-                else:
-                    label = category.name
-                current_bar = ax.bar(
-                    "Total TCO",
-                    cost,
-                    bottom=bottom,
-                    label=label if label not in seen_labels else "_nolegend_",
-                    width=0.2,
-                    color=color,
-                    hatch=hatch,
-                    edgecolor="gray",
-                )
-                seen_labels.add(label)
-                bottom += cost
-                ax.bar_label(current_bar, label_type="center", padding=3, fmt="%.2f")
-
-        total = self.result.tco_per_vehicle_km
-        ax.text(
-            0,
-            total + 0.05,
-            str(round(total, 2)),
-            ha="center",
-            va="bottom",
-            fontweight="bold",
-        )
-        ax.set_ylabel("Specific Cost (EUR/km)")
-        ax.set_xlim(left=-0.5, right=0.5)
-        ax.set_title("Total Cost of Ownership by Type")
-        ax.legend()
-        plt.savefig("tco_by_type.png")
 
     def _load_capex_items_from_db(self, session) -> None:
         """Load and build all CAPEX items from the database.

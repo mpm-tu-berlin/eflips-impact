@@ -531,3 +531,103 @@ class LcaResult:
         if total_rkm <= 0:
             return accumulated
         return {itype: v / total_rkm for itype, v in accumulated.items()}
+
+    def plot_by_scope(self, save_path: str = "lca_by_scope.png") -> None:
+        """Plot a stacked bar chart of GWP per revenue-km by lifecycle scope.
+
+        :param save_path: File path for the saved figure.
+        """
+        import matplotlib.pyplot as plt
+
+        color_map: dict[LcaScope, str] = {
+            LcaScope.PRODUCTION_AND_EOL: "lightblue",
+            LcaScope.USE_PHASE: "lightgreen",
+        }
+
+        by_scope = self.emissions_by_scope
+        total_gwp = self.total_per_revenue_km.gwp
+
+        fig, ax = plt.subplots(figsize=(6, 8))
+        bottom = 0.0
+
+        for scope, color in color_map.items():
+            gwp = by_scope[scope].gwp
+            if gwp == 0.0:
+                continue
+            bar = ax.bar(
+                "Total LCA",
+                gwp,
+                bottom=bottom,
+                label=scope.name,
+                width=0.2,
+                color=color,
+                edgecolor="gray",
+            )
+            ax.bar_label(bar, label_type="center", padding=3, fmt="%.4f")
+            bottom += gwp
+
+        ax.text(
+            0,
+            total_gwp,
+            str(round(total_gwp, 4)),
+            ha="center",
+            va="bottom",
+            fontweight="bold",
+        )
+        ax.set_ylabel("GWP (kg CO₂-eq / revenue-km)")
+        ax.set_xlim(left=-0.5, right=0.5)
+        ax.set_title("LCA GWP by Lifecycle Scope")
+        ax.legend()
+        plt.savefig(save_path)
+        plt.close(fig)
+
+    def plot_by_type(self, save_path: str = "lca_by_type.png") -> None:
+        """Plot a stacked bar chart of GWP per revenue-km by component type.
+
+        :param save_path: File path for the saved figure.
+        """
+        import matplotlib.pyplot as plt
+
+        color_map: dict[ItemType, str] = {
+            ItemType.VEHICLE: "lightgray",
+            ItemType.BATTERY: "lightgreen",
+            ItemType.INFRASTRUCTURE: "skyblue",
+            ItemType.ENERGY: "lightcyan",
+        }
+
+        by_type = self.emissions_by_type
+        total_gwp = self.total_per_revenue_km.gwp
+
+        fig, ax = plt.subplots(figsize=(6, 8))
+        bottom = 0.0
+
+        for itype, color in color_map.items():
+            gwp = by_type[itype].gwp
+            if gwp == 0.0:
+                continue
+            bar = ax.bar(
+                "Total LCA",
+                gwp,
+                bottom=bottom,
+                label=itype.name,
+                width=0.2,
+                color=color,
+                edgecolor="gray",
+            )
+            ax.bar_label(bar, label_type="center", padding=3, fmt="%.4f")
+            bottom += gwp
+
+        ax.text(
+            0,
+            total_gwp,
+            str(round(total_gwp, 4)),
+            ha="center",
+            va="bottom",
+            fontweight="bold",
+        )
+        ax.set_ylabel("GWP (kg CO₂-eq / revenue-km)")
+        ax.set_xlim(left=-0.5, right=0.5)
+        ax.set_title("LCA GWP by Component Type")
+        ax.legend()
+        plt.savefig(save_path)
+        plt.close(fig)
