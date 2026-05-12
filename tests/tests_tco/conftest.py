@@ -249,7 +249,7 @@ def tco_session(fleet_session: Session, scenario: Scenario) -> Session:
     Sets tco_parameters on the Scenario, all VehicleTypes, all BatteryTypes,
     both ChargingPointTypes, and all charging-station Station rows.
     """
-    from eflips.impact.tco.params import init_tco_parameters
+    from eflips.impact.tco import init_tco_params
     from eflips.impact.tco.dataclasses import (
         ScenarioTCOParameter,
         VehicleTypeTCOParameter,
@@ -258,7 +258,7 @@ def tco_session(fleet_session: Session, scenario: Scenario) -> Session:
         ChargingInfrastructureTCOParameter,
     )
 
-    init_tco_parameters(
+    init_tco_params(
         scenario,
         scenario_params=ScenarioTCOParameter.from_dict(SCENARIO_TCO_PARAMS),
         vehicle_type_params=[

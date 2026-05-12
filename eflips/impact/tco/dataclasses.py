@@ -1,9 +1,11 @@
 """Dataclass definitions for TCO parameters and results."""
 
 import json
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Dict, Any, Optional, Union, List
+
+from eflips.impact.tco.cost_items import CapexItemType, OpexItemType
 
 
 @dataclass
@@ -194,49 +196,56 @@ class TCOResult:
     project_duration: int
     """Project duration in years."""
 
-    annual_vehicle_mileage: float
-    """Annual total fleet mileage (all trips) in km/year."""
+    tco_by_type: Dict[Union[CapexItemType, OpexItemType], float]
+    """Total TCO (EUR, NPV) over the project duration, broken down by cost category."""
 
-    annual_revenue_mileage: float
-    """Annual revenue (passenger-trip) mileage in km/year."""
+    annual_revenue_km: float
+    """Annual fleet revenue-km total (km/year)."""
 
-    total_capex: float
-    """Total CAPEX (net present value) over the project duration in EUR."""
+    annual_vehicle_km: float
+    """Annual fleet vehicle-km total (all trips, km/year)."""
 
-    total_opex: float
-    """Total OPEX (net present value) over the project duration in EUR."""
+    @property
+    def total_capex(self) -> float:
+        """Total CAPEX (NPV) over the project duration in EUR."""
+        return sum(v for k, v in self.tco_by_type.items() if isinstance(k, CapexItemType))
 
-    tco_over_project_duration: float
-    """Total TCO (CAPEX + OPEX, net present value) in EUR."""
+    @property
+    def total_opex(self) -> float:
+        """Total OPEX (NPV) over the project duration in EUR."""
+        return sum(v for k, v in self.tco_by_type.items() if isinstance(k, OpexItemType))
 
-    tco_by_type: Dict[str, float]
-    """Total TCO (EUR) broken down by cost category (e.g. VEHICLE, ENERGY, STAFF)."""
+    @property
+    def tco_over_project_duration(self) -> float:
+        """Total TCO (CAPEX + OPEX, NPV) in EUR."""
+        return sum(self.tco_by_type.values())
 
     @property
     def tco_per_vehicle_km(self) -> float:
         """Specific TCO in EUR per total vehicle-km."""
-        return self.tco_over_project_duration / (
-            self.annual_vehicle_mileage * self.project_duration
-        )
+        return self.tco_over_project_duration / (self.annual_vehicle_km * self.project_duration)
 
     @property
     def tco_per_revenue_km(self) -> float:
         """Specific TCO in EUR per revenue-km."""
-        return self.tco_over_project_duration / (
-            self.annual_revenue_mileage * self.project_duration
-        )
+        return self.tco_over_project_duration / (self.annual_revenue_km * self.project_duration)
 
-    def tco_by_type_per_km(self, use_revenue_km: bool = False) -> Dict[str, float]:
-        """Return tco_by_type as EUR/km.
+    @property
+    def tco_by_type_per_vehicle_km(self) -> Dict[Union[CapexItemType, OpexItemType], float]:
+        """TCO per vehicle-km by cost category (EUR/km).
 
-        :param use_revenue_km: If True, divide by revenue-km; otherwise by vehicle-km.
+        :returns: Dict mapping each cost category to EUR per total vehicle-km.
         """
-        mileage = (
-            self.annual_revenue_mileage
-            if use_revenue_km
-            else self.annual_vehicle_mileage
-        )
-        total_km = mileage * self.project_duration
+        total_km = self.annual_vehicle_km * self.project_duration
+        return {k: v / total_km for k, v in self.tco_by_type.items()}
+
+    @property
+    def tco_by_type_per_revenue_km(self) -> Dict[Union[CapexItemType, OpexItemType], float]:
+        """TCO per revenue-km by cost category (EUR/km).
+
+        :returns: Dict mapping each cost category to EUR per revenue-km.
+        """
+        total_km = self.annual_revenue_km * self.project_duration
         return {k: v / total_km for k, v in self.tco_by_type.items()}
 
 

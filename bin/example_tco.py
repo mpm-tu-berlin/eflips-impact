@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from eflips.impact.tco import calculate_tco, init_tco_parameters_from_json
+from eflips.impact.tco import calculate_tco, init_tco_params
 from eflips.impact.utils import init_fleet
 
 # ---------------------------------------------------------------------------
@@ -49,7 +49,7 @@ print("  Fleet topology written to DB.\n")
 # Step 2: Populate tco_parameters via init_tco_parameters_from_json
 # ---------------------------------------------------------------------------
 print("Step 2: Writing tco_parameters ...")
-init_tco_parameters_from_json(
+init_tco_params(
     scenario=SCENARIO_ID,
     json_path=TCO_JSON,
     database_url=DATABASE_URL,
@@ -60,22 +60,26 @@ print("  tco_parameters written to DB.\n")
 # Step 3: Calculate TCO
 # ---------------------------------------------------------------------------
 print("Step 3: Running calculate_tco ...")
-result_per_vkm = calculate_tco(scenario=SCENARIO_ID, database_url=DATABASE_URL, use_revenue_km=False)
+result = calculate_tco(scenario=SCENARIO_ID, database_url=DATABASE_URL)
 print("  Done.\n")
 
 # ---------------------------------------------------------------------------
 # Step 4: Print results
 # ---------------------------------------------------------------------------
-print("=== TCO Results (EUR / vehicle-km) ===\n")
+per_rkm = result.tco_by_type_per_revenue_km
 
-header = f"{'Category':<20} {'EUR / vehicle-km':>18}"
+print("=== TCO Results (EUR / revenue-km) ===\n")
+header = f"{'Category':<20} {'EUR / revenue-km':>18}"
+sep = "-" * len(header)
 print(header)
-print("-" * len(header))
+print(sep)
 
-for category in sorted(result_per_vkm):
-    print(f"{category:<20} {result_per_vkm[category]:>18.4f}")
+for category in sorted(per_rkm, key=lambda k: k.name):
+    print(f"{category.name:<20} {per_rkm[category]:>18.4f}")
 
-print("-" * len(header))
-print(f"{'TOTAL':<20} {sum(result_per_vkm.values()):>18.4f}")
+print(sep)
+print(f"{'TOTAL':<20} {result.tco_per_revenue_km:>18.4f}")
 print()
-print("Unit: EUR per vehicle-km over the full project duration.")
+print(f"Project duration : {result.project_duration} years")
+print(f"Annual revenue-km: {result.annual_revenue_km:,.0f}")
+print(f"Total TCO (NPV)  : EUR {result.tco_over_project_duration:,.0f}")

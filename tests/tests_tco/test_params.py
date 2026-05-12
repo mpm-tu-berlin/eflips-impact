@@ -17,7 +17,7 @@ from eflips.impact.tco.dataclasses import (
     ScenarioTCOParameter,
     VehicleTypeTCOParameter,
 )
-from eflips.impact.tco.params import init_tco_parameters, init_tco_parameters_from_json
+from eflips.impact.tco import init_tco_params
 
 from tests.tests_tco.conftest import (
     BATTERY_TCO_PARAMS,
@@ -46,7 +46,7 @@ DEFAULTS_JSON = (
 
 
 def test_scenario_params_written(fleet_session: Session, scenario: Scenario) -> None:
-    init_tco_parameters(
+    init_tco_params(
         scenario,
         scenario_params=ScenarioTCOParameter.from_dict(SCENARIO_TCO_PARAMS),
     )
@@ -64,7 +64,7 @@ def test_scenario_params_written(fleet_session: Session, scenario: Scenario) -> 
 def test_vehicle_type_params_written(
     fleet_session: Session, scenario: Scenario
 ) -> None:
-    init_tco_parameters(
+    init_tco_params(
         scenario,
         vehicle_type_params=[
             VehicleTypeTCOParameter.from_dict({"name_short": ns, **params})
@@ -85,7 +85,7 @@ def test_unknown_vehicle_name_short_warns(
     fleet_session: Session, scenario: Scenario
 ) -> None:
     with pytest.warns(UserWarning, match="UNKNOWN_VT"):
-        init_tco_parameters(
+        init_tco_params(
             scenario,
             vehicle_type_params=[
                 VehicleTypeTCOParameter(
@@ -107,7 +107,7 @@ def test_unknown_vehicle_name_short_warns(
 def test_battery_type_params_written(
     fleet_session: Session, scenario: Scenario
 ) -> None:
-    init_tco_parameters(
+    init_tco_params(
         scenario,
         battery_type_params=[
             BatteryTypeTCOParameter(
@@ -138,7 +138,7 @@ def test_battery_missing_assignment_warns(
     """VehicleType without battery_type_id → skip with UserWarning."""
     # No BatteryType created, so battery_type_id is None for all VehicleTypes.
     with pytest.warns(UserWarning, match="no BatteryType assigned"):
-        init_tco_parameters(
+        init_tco_params(
             scenario,
             battery_type_params=[
                 BatteryTypeTCOParameter(
@@ -159,7 +159,7 @@ def test_battery_missing_assignment_warns(
 def test_charging_point_type_params_written(
     fleet_session: Session, scenario: Scenario
 ) -> None:
-    init_tco_parameters(
+    init_tco_params(
         scenario,
         charging_point_type_params=[
             ChargingPointTypeTCOParameter.from_dict(
@@ -185,7 +185,7 @@ def test_charging_point_type_params_written(
 def test_missing_cpt_warns(db_session: Session, scenario: Scenario) -> None:
     """No ChargingPointType rows → skip with UserWarning."""
     with pytest.warns(UserWarning, match="'depot' ChargingPointType"):
-        init_tco_parameters(
+        init_tco_params(
             scenario,
             charging_point_type_params=[
                 ChargingPointTypeTCOParameter.from_dict(
@@ -206,7 +206,7 @@ def test_charging_infra_params_written(
     from sqlalchemy import distinct
     from eflips.model import Depot, Event, EventType, Station
 
-    init_tco_parameters(
+    init_tco_params(
         scenario,
         charging_infra_params=[
             ChargingInfrastructureTCOParameter.from_dict(
@@ -255,7 +255,7 @@ def test_battery_unknown_vehicle_name_short_warns(
 ) -> None:
     """vehicle_name_short not in DB → skip with warning."""
     with pytest.warns(UserWarning, match="UNKNOWN"):
-        init_tco_parameters(
+        init_tco_params(
             scenario,
             battery_type_params=[
                 BatteryTypeTCOParameter(
@@ -269,14 +269,14 @@ def test_battery_unknown_vehicle_name_short_warns(
 
 
 # ---------------------------------------------------------------------------
-# init_tco_parameters_from_json
+# init_tco_params — json_path
 # ---------------------------------------------------------------------------
 
 
 def test_init_from_json_writes_scenario_params(
     fleet_session: Session, scenario: Scenario
 ) -> None:
-    init_tco_parameters_from_json(scenario, DEFAULTS_JSON)
+    init_tco_params(scenario, DEFAULTS_JSON)
     fleet_session.flush()
     fleet_session.refresh(scenario)
     assert scenario.tco_parameters["project_duration"] == 14
@@ -286,7 +286,7 @@ def test_init_from_json_writes_scenario_params(
 def test_init_from_json_writes_vehicle_type_params(
     fleet_session: Session, scenario: Scenario
 ) -> None:
-    init_tco_parameters_from_json(scenario, DEFAULTS_JSON)
+    init_tco_params(scenario, DEFAULTS_JSON)
     fleet_session.flush()
     en = (
         fleet_session.query(VehicleType)
@@ -300,7 +300,7 @@ def test_init_from_json_writes_vehicle_type_params(
 def test_init_from_json_writes_battery_type_params(
     fleet_session: Session, scenario: Scenario
 ) -> None:
-    init_tco_parameters_from_json(scenario, DEFAULTS_JSON)
+    init_tco_params(scenario, DEFAULTS_JSON)
     fleet_session.flush()
     bts = (
         fleet_session.query(BatteryType)
@@ -316,7 +316,7 @@ def test_init_from_json_writes_battery_type_params(
 def test_init_from_json_writes_cpt_params(
     fleet_session: Session, scenario: Scenario
 ) -> None:
-    init_tco_parameters_from_json(scenario, DEFAULTS_JSON)
+    init_tco_params(scenario, DEFAULTS_JSON)
     fleet_session.flush()
     cpts = (
         fleet_session.query(ChargingPointType)

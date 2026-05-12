@@ -369,11 +369,11 @@ class TCOCalculator:
             )
 
             # Fleet totals derived directly from SimData — no separate DB query
-            self.annual_vehicle_mileage: float = sum(
+            self.annual_vehicle_km: float = sum(
                 vd.annual_vehicle_kilometers
                 for vd in self.sim_data.vehicle_type_data.values()
             )
-            self.annual_revenue_mileage: float = sum(
+            self.annual_revenue_km: float = sum(
                 vd.annual_revenue_kilometers
                 for vd in self.sim_data.vehicle_type_data.values()
             )
@@ -475,21 +475,17 @@ class TCOCalculator:
         tco = total_capex + total_opex
 
         self.tco_by_item = pd.DataFrame({"Item": list_of_items, "Cost": list_of_costs})
-        self.tco_by_item["type"] = self.tco_by_item["Item"].apply(lambda x: x.type.name)
+        self.tco_by_item["type"] = self.tco_by_item["Item"].apply(lambda x: x.type)
 
-        tco_by_type = {
-            t: float(self.tco_by_item[self.tco_by_item["type"] == t]["Cost"].sum())
-            for t in set(self.tco_by_item["type"].values)
-        }
+        tco_by_type: dict[CapexItemType | OpexItemType, float] = {}
+        for item, cost in zip(list_of_items, list_of_costs):
+            tco_by_type[item.type] = tco_by_type.get(item.type, 0.0) + cost
 
         self.result = TCOResult(
             project_duration=self.project_duration,
-            annual_vehicle_mileage=self.annual_vehicle_mileage,
-            annual_revenue_mileage=self.annual_revenue_mileage,
-            total_capex=total_capex,
-            total_opex=total_opex,
-            tco_over_project_duration=tco,
             tco_by_type=tco_by_type,
+            annual_revenue_km=self.annual_revenue_km,
+            annual_vehicle_km=self.annual_vehicle_km,
         )
         return self.result
 
@@ -502,13 +498,13 @@ class TCOCalculator:
         bottom = 0
 
         category_color_mapping = {
-            "STAFF": "lightcoral",
-            "ENERGY": "lightcyan",
-            "MAINTENANCE": "lightyellow",
-            "OTHER": "lightpink",
-            "VEHICLE": "lightgray",
-            "BATTERY": "lightgreen",
-            "INFRASTRUCTURE": "skyblue",
+            OpexItemType.STAFF: "lightcoral",
+            OpexItemType.ENERGY: "lightcyan",
+            OpexItemType.MAINTENANCE: "lightyellow",
+            OpexItemType.OTHER: "lightpink",
+            CapexItemType.VEHICLE: "lightgray",
+            CapexItemType.BATTERY: "lightgreen",
+            CapexItemType.INFRASTRUCTURE: "skyblue",
         }
 
         def _fuel_tag(item_name: str) -> str:
@@ -518,7 +514,7 @@ class TCOCalculator:
                 return "electric"
             return "other"
 
-        total_vehicle_km = self.annual_vehicle_mileage * self.project_duration
+        total_vehicle_km = self.annual_vehicle_km * self.project_duration
         df = self.tco_by_item.copy()
         df["Specific Cost"] = df["Cost"] / total_vehicle_km
         df["fuel"] = df["Item"].apply(lambda x: _fuel_tag(x.name))
@@ -535,11 +531,11 @@ class TCOCalculator:
                     continue
                 cost = subset["Specific Cost"].sum()
                 if fuel == "diesel":
-                    label = f"{category} (Diesel)"
+                    label = f"{category.name} (Diesel)"
                 elif fuel == "electric":
-                    label = f"{category} (Electric)"
+                    label = f"{category.name} (Electric)"
                 else:
-                    label = category
+                    label = category.name
                 current_bar = ax.bar(
                     "Total TCO",
                     cost,
