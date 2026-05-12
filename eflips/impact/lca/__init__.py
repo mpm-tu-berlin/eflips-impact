@@ -9,7 +9,10 @@ from eflips.impact.lca.calculation import calculate_lca
 from eflips.impact.lca.dataclasses import (
     BatteryTypeLcaParams,
     ChargingPointTypeLcaParams,
+    ItemType,
+    LcaItem,
     LcaResult,
+    LcaScope,
     VehicleTypeLcaParams,
 )
 from eflips.impact.utils.extraction import (
@@ -35,7 +38,10 @@ __all__ = [
     "VehicleTypeLcaParams",
     "BatteryTypeLcaParams",
     "ChargingPointTypeLcaParams",
+    "LcaItem",
     "LcaResult",
+    "LcaScope",
+    "ItemType",
     "ScenarioSimData",
     "VehicleTypeSimData",
     "AreaSimData",

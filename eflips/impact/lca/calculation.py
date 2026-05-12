@@ -30,7 +30,10 @@ from eflips.model import (
 from eflips.impact.lca.dataclasses import (
     BatteryTypeLcaParams,
     ChargingPointTypeLcaParams,
+    ItemType,
+    LcaItem,
     LcaResult,
+    LcaScope,
     VehicleTypeLcaParams,
 )
 from eflips.impact.utils.extraction import (
@@ -196,30 +199,127 @@ def calculate_battery_emissions(
     return emissions, battery_mass
 
 
-def amortize_production(
-    e_chassis: DefaultImpactVector,
-    e_motor: DefaultImpactVector,
-    e_battery: DefaultImpactVector,
-    vehicle_lifetime_years: float,
-    battery_lifetime_years: float | None,
-    energy_source: EnergySource,
-) -> DefaultImpactVector:
-    """Amortise production emissions to annual values (§1.4.6).
+def calculate_vehicle_type_emissions(
+    vtype: VehicleType,
+    battery_type: BatteryType | None,
+    params: VehicleTypeLcaParams,
+    n_total: int,
+    vehicle_km: float,
+) -> list[LcaItem]:
+    """Calculate annual fleet LCA items for one vehicle type.
 
-    :param e_chassis: Total chassis emissions.
-    :param e_motor: Total motor emissions.
-    :param e_battery: Total battery emissions.
-    :param vehicle_lifetime_years: Motor + chassis lifetime.
-    :param battery_lifetime_years: Battery lifetime (``None`` for ICEB).
-    :param energy_source: The vehicle's energy source.
-    :returns: Annual production emissions.
+    Returns separate ``LcaItem`` instances for chassis, motor, battery (BEB
+    only), energy, and maintenance — each tagged with the vehicle type's
+    ``name_short``, an ``ItemType``, and an ``LcaScope``.  Emission vectors
+    are annual fleet totals (amortised where applicable, fleet-scaled by
+    *n_total*); they are **not** normalised to per-revenue-km.
+
+    :param vtype: The vehicle type ORM object.
+    :param battery_type: The battery type, or ``None`` for ICEB or BEB
+        without an assigned battery.
+    :param params: Deserialised ``VehicleTypeLcaParams``.
+    :param n_total: Fleet size (ready + reserve) for this vehicle type.
+    :param vehicle_km: Annual driven vehicle-km (fleet aggregate, used for
+        energy consumption).
+    :returns: List of annual-fleet ``LcaItem`` objects.
+    :raises ValueError: If required parameters are missing for the vehicle's
+        energy source.
     """
-    body = amortize(e_motor + e_chassis, vehicle_lifetime_years)
-    if energy_source == EnergySource.BATTERY_ELECTRIC:
-        if battery_lifetime_years is None:
-            raise ValueError("battery_lifetime_years required for BEB")
-        return amortize(e_battery, battery_lifetime_years) + body
-    return body
+    name = vtype.name_short
+    items: list[LcaItem] = []
+
+    # Battery mass is also needed to subtract from empty mass for chassis.
+    e_battery_total, battery_mass = calculate_battery_emissions(vtype, battery_type)
+
+    if vtype.energy_source == EnergySource.BATTERY_ELECTRIC:
+        if params.motor_power_to_weight_ratio is None:
+            raise ValueError(
+                f"VehicleType {vtype.id}: motor_power_to_weight_ratio required for BEB"
+            )
+        motor_mass_for_chassis = (
+            params.motor_rated_power_kw / params.motor_power_to_weight_ratio
+        )
+    else:
+        if params.motor_mass_kg is None:
+            raise ValueError(
+                f"VehicleType {vtype.id}: motor_mass_kg required for DIESEL"
+            )
+        motor_mass_for_chassis = params.motor_mass_kg
+
+    # Chassis (prod+EoL, amortised over vehicle lifetime, fleet-scaled)
+    e_chassis_total = calculate_chassis_emissions(
+        float(vtype.empty_mass), motor_mass_for_chassis, battery_mass, params
+    )
+    items.append(
+        LcaItem(
+            name=name,
+            type=ItemType.VEHICLE,
+            scope=LcaScope.PRODUCTION_AND_EOL,
+            emission_vector=amortize(e_chassis_total, params.vehicle_lifetime_years) * n_total,
+        )
+    )
+
+    # Motor (prod+EoL, amortised over vehicle lifetime, fleet-scaled)
+    e_motor_total = calculate_motor_emissions(vtype.energy_source, params)
+    items.append(
+        LcaItem(
+            name=name,
+            type=ItemType.VEHICLE,
+            scope=LcaScope.PRODUCTION_AND_EOL,
+            emission_vector=amortize(e_motor_total, params.vehicle_lifetime_years) * n_total,
+        )
+    )
+
+    # Battery (BEB only, prod+EoL, amortised over battery lifetime, fleet-scaled)
+    if vtype.energy_source == EnergySource.BATTERY_ELECTRIC and battery_type is not None:
+        if battery_type.lca_params is None:
+            raise ValueError(f"BatteryType {battery_type.id} has no lca_params set.")
+        bt_params = BatteryTypeLcaParams.from_dict(battery_type.lca_params)
+        items.append(
+            LcaItem(
+                name=name,
+                type=ItemType.BATTERY,
+                scope=LcaScope.PRODUCTION_AND_EOL,
+                emission_vector=amortize(e_battery_total, bt_params.battery_lifetime_years) * n_total,
+            )
+        )
+
+    # Energy (use phase; vehicle_km is the fleet aggregate — no n_total scaling)
+    if vtype.energy_source == EnergySource.BATTERY_ELECTRIC:
+        annual_energy_kwh = params.average_consumption_kwh_per_km * vehicle_km
+        e_energy = calculate_energy_emissions_beb(
+            annual_energy_kwh, float(vtype.charging_efficiency), params
+        )
+    elif vtype.energy_source == EnergySource.DIESEL:
+        if params.diesel_consumption_kg_per_km is None:
+            raise ValueError(
+                f"VehicleType {vtype.id}: diesel_consumption_kg_per_km required for DIESEL"
+            )
+        annual_diesel_kg = params.diesel_consumption_kg_per_km * vehicle_km
+        e_energy = calculate_energy_emissions_diesel(annual_diesel_kg, params)
+    else:
+        raise ValueError(f"Unsupported energy source: {vtype.energy_source}")
+
+    items.append(
+        LcaItem(
+            name=name,
+            type=ItemType.ENERGY,
+            scope=LcaScope.USE_PHASE,
+            emission_vector=e_energy,
+        )
+    )
+
+    # Maintenance (use phase, per vehicle × fleet size)
+    items.append(
+        LcaItem(
+            name=name,
+            type=ItemType.VEHICLE,
+            scope=LcaScope.USE_PHASE,
+            emission_vector=params.maintenance_per_year[vtype.energy_source] * n_total,
+        )
+    )
+
+    return items
 
 
 # ===================================================================
@@ -321,15 +421,16 @@ def _get_cpt_params(entity: Any, entity_label: str) -> ChargingPointTypeLcaParam
 def calculate_depot_area_emissions(
     area: Area,
     area_sim: AreaSimData,
-) -> DefaultImpactVector:
-    """Calculate annual infrastructure emissions for one depot area (§1.6.2).
+) -> LcaItem:
+    """Calculate annual infrastructure LcaItem for one depot area (§1.6.2).
 
     Issues oversizing warnings when the peak vehicle count is
     significantly below the area capacity.
 
     :param area: The depot ``Area`` ORM object.
     :param area_sim: Extracted simulation data for this area.
-    :returns: Annual infrastructure emissions for this area.
+    :returns: Annual amortised ``LcaItem`` for this area (not normalised to
+        per-revenue-km).
     """
     cpt_params = _get_cpt_params(area, f"Area {area.id}")
 
@@ -351,11 +452,7 @@ def calculate_depot_area_emissions(
         )
 
     peak_power = area_sim.peak_charging_power_kw
-
-    # TODO: better to use peak for research purpose and n_plugs for real-world estimation? Need to align
-
     n_plugs = capacity
-    # n_plugs = peak
     e_power_units = power_scaled_emissions(
         cpt_params.power_unit_emission,
         peak_power,
@@ -372,18 +469,24 @@ def calculate_depot_area_emissions(
         + e_transformers
         + cpt_params.control_unit_emissions
     )
-    return amortize(e_total, cpt_params.infrastructure_lifetime_years)
+    return LcaItem(
+        name=f"depot_area_{area.id}",
+        type=ItemType.INFRASTRUCTURE,
+        scope=LcaScope.PRODUCTION_AND_EOL,
+        emission_vector=amortize(e_total, cpt_params.infrastructure_lifetime_years),
+    )
 
 
 def calculate_terminal_station_emissions(
     station: Station,
     station_sim: StationSimData,
-) -> DefaultImpactVector:
-    """Calculate annual infrastructure emissions for a terminal station (§1.6.3).
+) -> LcaItem:
+    """Calculate annual infrastructure LcaItem for a terminal station (§1.6.3).
 
     :param station: The ``Station`` ORM object.
     :param station_sim: Extracted simulation data for this station.
-    :returns: Annual infrastructure emissions for this station.
+    :returns: Annual amortised ``LcaItem`` for this station (not normalised to
+        per-revenue-km).
     """
     cpt_params = _get_cpt_params(station, f"Station {station.id}")
 
@@ -405,11 +508,7 @@ def calculate_terminal_station_emissions(
         )
 
     peak_power = station_sim.peak_charging_power_kw
-
     n_plugs = capacity
-
-    # TODO: better to use peak for research purpose and n_plugs for real-world estimation? Need to align
-    # n_plugs = peak
 
     e_power_units = power_scaled_emissions(
         cpt_params.power_unit_emission,
@@ -434,7 +533,12 @@ def calculate_terminal_station_emissions(
         + e_concrete_per_plug * n_plugs
         + cpt_params.control_unit_emissions
     )
-    return amortize(e_total, cpt_params.infrastructure_lifetime_years)
+    return LcaItem(
+        name=f"station_{station.id}",
+        type=ItemType.INFRASTRUCTURE,
+        scope=LcaScope.PRODUCTION_AND_EOL,
+        emission_vector=amortize(e_total, cpt_params.infrastructure_lifetime_years),
+    )
 
 
 # ===================================================================
@@ -490,21 +594,17 @@ def calculate_lca(
         # 1. Extract simulation data
         sim_data = extract_simulation_data(session, scenario_id, ew, sw, eta_avail)
 
-        # 2. Query vehicle types
+        # 2. Per-vehicle-type items
         vehicle_types = (
             session.query(VehicleType)
             .filter(VehicleType.scenario_id == scenario_id)
             .all()
         )
 
-        production_results: dict[int, DefaultImpactVector] = {}
-        use_results: dict[int, DefaultImpactVector] = {}
-        revenue_km_per_type: dict[int, float] = {}
+        all_items: list[LcaItem] = []
+        revenue_km_per_type: dict[str, float] = {}
+        vehicle_km_per_type: dict[str, float] = {}
         total_revenue_km = 0.0
-        # Fleet-level unnormalized annual emissions — accumulated across all types
-        # for the shared-denominator total (design doc §1.7).
-        e_prod_annual_fleet = DefaultImpactVector.zero()
-        e_use_annual_fleet = DefaultImpactVector.zero()
 
         for vtype in vehicle_types:
             vtype_id = int(vtype.id)
@@ -521,10 +621,7 @@ def calculate_lca(
                 vtype.lca_params, energy_source=vtype.energy_source
             )
 
-            # TODO potential improvement
-
             battery_type: BatteryType | None = vtype.battery_type
-
             if (
                 vtype.energy_source == EnergySource.BATTERY_ELECTRIC
                 and battery_type is None
@@ -535,11 +632,10 @@ def calculate_lca(
                     stacklevel=2,
                 )
 
-            n_ready = vtype_sim.n_ready
-            n_total = math.ceil(n_ready / sim_data.eta_avail)
             revenue_km = vtype_sim.annual_revenue_kilometers
             vehicle_km = vtype_sim.annual_vehicle_kilometers
-            revenue_km_per_type[vtype_id] = revenue_km
+            revenue_km_per_type[vtype.name_short] = revenue_km
+            vehicle_km_per_type[vtype.name_short] = vehicle_km
             total_revenue_km += revenue_km
 
             if revenue_km <= 0:
@@ -548,82 +644,14 @@ def calculate_lca(
                 )
                 continue
 
-            # --- Production + EoL ---
-            e_battery, battery_mass = calculate_battery_emissions(vtype, battery_type)
-
-            if vtype.energy_source == EnergySource.BATTERY_ELECTRIC:
-                if params.motor_power_to_weight_ratio is None:
-                    raise ValueError(
-                        f"VehicleType {vtype_id}: motor_power_to_weight_ratio required for BEB"
-                    )
-                motor_mass_for_chassis = (
-                    params.motor_rated_power_kw / params.motor_power_to_weight_ratio
+            n_total = math.ceil(vtype_sim.n_ready / sim_data.eta_avail)
+            all_items.extend(
+                calculate_vehicle_type_emissions(
+                    vtype, battery_type, params, n_total, vehicle_km
                 )
-            else:
-                if params.motor_mass_kg is None:
-                    raise ValueError(
-                        f"VehicleType {vtype_id}: motor_mass_kg required for DIESEL"
-                    )
-                motor_mass_for_chassis = params.motor_mass_kg
-
-            e_chassis = calculate_chassis_emissions(
-                float(vtype.empty_mass),
-                motor_mass_for_chassis,
-                battery_mass,
-                params,
             )
-            e_motor = calculate_motor_emissions(vtype.energy_source, params)
-
-            bt_lifetime: float | None = None
-            if battery_type is not None and battery_type.lca_params is not None:
-                bt_params = BatteryTypeLcaParams.from_dict(battery_type.lca_params)
-                bt_lifetime = bt_params.battery_lifetime_years
-
-            e_prod_annual = amortize_production(
-                e_chassis,
-                e_motor,
-                e_battery,
-                params.vehicle_lifetime_years,
-                bt_lifetime,
-                vtype.energy_source,
-            )
-            e_prod_fleet = e_prod_annual * n_total
-            production_results[vtype_id] = normalize_to_revenue_km(
-                e_prod_fleet, revenue_km
-            )
-            e_prod_annual_fleet = e_prod_annual_fleet + e_prod_fleet
-
-            # --- Use phase ---
-            # Energy emissions (fleet aggregate for all ready vehicles)
-            if vtype.energy_source == EnergySource.BATTERY_ELECTRIC:
-                annual_energy_kwh = params.average_consumption_kwh_per_km * vehicle_km
-                e_energy = calculate_energy_emissions_beb(
-                    annual_energy_kwh,
-                    float(vtype.charging_efficiency),
-                    params,
-                )
-            elif vtype.energy_source == EnergySource.DIESEL:
-                if params.diesel_consumption_kg_per_km is None:
-                    raise ValueError(
-                        f"VehicleType {vtype_id}: diesel_consumption_kg_per_km "
-                        f"required for DIESEL"
-                    )
-                annual_diesel_kg = params.diesel_consumption_kg_per_km * vehicle_km
-                e_energy = calculate_energy_emissions_diesel(annual_diesel_kg, params)
-            else:
-                raise ValueError(f"Unsupported energy source: {vtype.energy_source}")
-
-            # Maintenance (per vehicle × n_total)
-            e_maint_per_vehicle = params.maintenance_per_year[vtype.energy_source]
-
-            e_use_fleet = e_energy + e_maint_per_vehicle * n_total
-            use_results[vtype_id] = normalize_to_revenue_km(e_use_fleet, revenue_km)
-            e_use_annual_fleet = e_use_annual_fleet + e_use_fleet
 
         # 3. Charging infrastructure (BEB only)
-        e_infra_annual = DefaultImpactVector.zero()
-
-        # Depot areas
         areas = (
             session.query(Area)
             .join(Depot, Area.depot_id == Depot.id)
@@ -636,15 +664,11 @@ def calculate_lca(
             area_sim = sim_data.area_data.get(int(area.id))
             if area_sim is None:
                 logger.warning(
-                    "Area %d has no simulation data, skipping infra calc.",
-                    area.id,
+                    "Area %d has no simulation data, skipping infra calc.", area.id
                 )
                 continue
-            e_infra_annual = e_infra_annual + calculate_depot_area_emissions(
-                area, area_sim
-            )
+            all_items.append(calculate_depot_area_emissions(area, area_sim))
 
-        # Terminal stations
         stations = (
             session.query(Station)
             .outerjoin(Depot, Depot.station_id == Station.id)
@@ -661,31 +685,10 @@ def calculate_lca(
                     station.id,
                 )
                 continue
-            e_infra_annual = e_infra_annual + calculate_terminal_station_emissions(
-                station, station_sim
-            )
-
-        # Normalise infrastructure to per-revenue-km
-        if total_revenue_km > 0:
-            e_infra_per_rkm = normalize_to_revenue_km(e_infra_annual, total_revenue_km)
-        else:
-            e_infra_per_rkm = DefaultImpactVector.zero()
-
-        # 4. Compute fleet-wide total with shared denominator (design doc §1.7)
-        if total_revenue_km > 0:
-            e_total = (
-                normalize_to_revenue_km(
-                    e_prod_annual_fleet + e_use_annual_fleet, total_revenue_km
-                )
-                + e_infra_per_rkm
-            )
-        else:
-            e_total = DefaultImpactVector.zero()
+            all_items.append(calculate_terminal_station_emissions(station, station_sim))
 
         return LcaResult(
-            production=production_results,
-            use_phase=use_results,
-            infrastructure=e_infra_per_rkm,
-            total=e_total,
+            items=all_items,
             revenue_km=revenue_km_per_type,
+            vehicle_km=vehicle_km_per_type,
         )

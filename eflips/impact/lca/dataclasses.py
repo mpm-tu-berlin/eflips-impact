@@ -9,6 +9,7 @@ from __future__ import annotations
 import warnings
 from dataclasses import InitVar, dataclass, field
 from typing import Any
+from enum import Enum, auto
 
 from eflips.model import EnergySource
 
@@ -425,6 +426,39 @@ class ChargingPointTypeLcaParams:
         )
 
 
+class LcaScope(Enum):
+
+    PRODUCTION_AND_EOL = auto()
+    USE_PHASE = auto()
+
+
+class ItemType(Enum):
+
+    VEHICLE = auto()
+    BATTERY = auto()
+    INFRASTRUCTURE = auto()
+    ENERGY = auto()
+
+
+@dataclass
+class LcaItem:
+    """One normalised emission contribution in an LCA result.
+
+    :ivar name: ``VehicleType.name_short`` for vehicle/battery/energy/
+        maintenance items; an entity label (e.g. ``"depot_area_5"``) for
+        infrastructure items.
+    :ivar type: Component category.
+    :ivar scope: Lifecycle scope.
+    :ivar emission_vector: Annual fleet emissions (amortised where applicable,
+        fleet-scaled).  **Not** normalised to per-revenue-km.
+    """
+
+    name: str
+    type: ItemType
+    scope: LcaScope
+    emission_vector: DefaultImpactVector
+
+
 # ---------------------------------------------------------------------------
 # LcaResult
 # ---------------------------------------------------------------------------
@@ -434,25 +468,66 @@ class ChargingPointTypeLcaParams:
 class LcaResult:
     """Output of :func:`eflips.lca.calculate_lca`.
 
-    :ivar production: Per-revenue-km production emissions, keyed by
-        ``VehicleType.id``.  Normalised by that type's own Nwkm.
-    :ivar use_phase: Per-revenue-km use-phase emissions, keyed by
-        ``VehicleType.id``.  Normalised by that type's own Nwkm.
-    :ivar infrastructure: Fleet-wide per-revenue-km infrastructure emissions.
-        Normalised by total fleet Nwkm.
-    :ivar total: Fleet-wide per-revenue-km total.  Production and use are
-        normalised by total fleet Nwkm (shared denominator), so this is
-        **not** equal to ``Σ production[t] + Σ use_phase[t] + infrastructure``
-        for multi-type fleets.
+    :ivar items: Annual fleet emission items (not normalised).  Sum any subset
+        and divide by ``sum(revenue_km.values())`` to obtain per-revenue-km
+        values.
     :ivar revenue_km: Annual revenue-kilometres per vehicle type, keyed by
-        ``VehicleType.id``.  Exposed so callers can reconstruct the
-        correct fleet-wide formula.
+        ``VehicleType.name_short``.
+    :ivar vehicle_km: Annual vehicle-kilometres per vehicle type, keyed by
+        ``VehicleType.name_short``.
     """
 
-    production: dict[int, DefaultImpactVector] = field(default_factory=dict)
-    use_phase: dict[int, DefaultImpactVector] = field(default_factory=dict)
-    infrastructure: DefaultImpactVector = field(
-        default_factory=DefaultImpactVector.zero
-    )
-    total: DefaultImpactVector = field(default_factory=DefaultImpactVector.zero)
-    revenue_km: dict[int, float] = field(default_factory=dict)
+    items: list[LcaItem] = field(default_factory=list)
+    revenue_km: dict[str, float] = field(default_factory=dict)
+    vehicle_km: dict[str, float] = field(default_factory=dict)
+
+    @property
+    def total_per_revenue_km(self) -> DefaultImpactVector:
+        """Fleet-wide total emissions per revenue-km.
+
+        Sums all item emission vectors and divides by the total fleet
+        revenue-km.  Returns a zero vector if revenue-km is zero.
+
+        :returns: Total emissions per revenue-kilometre.
+        """
+        total_rkm = sum(self.revenue_km.values())
+        if total_rkm <= 0:
+            return DefaultImpactVector.zero()
+        total = DefaultImpactVector.zero()
+        for item in self.items:
+            total = total + item.emission_vector
+        return total / total_rkm
+
+    @property
+    def emissions_by_scope(self) -> dict[LcaScope, DefaultImpactVector]:
+        """Emissions per revenue-km grouped by lifecycle scope.
+
+        All ``LcaScope`` members are present as keys (zero vector if no items
+        for that scope).  Returns zero vectors if revenue-km is zero.
+
+        :returns: Mapping from ``LcaScope`` to per-revenue-km emissions.
+        """
+        total_rkm = sum(self.revenue_km.values())
+        accumulated = {scope: DefaultImpactVector.zero() for scope in LcaScope}
+        for item in self.items:
+            accumulated[item.scope] = accumulated[item.scope] + item.emission_vector
+        if total_rkm <= 0:
+            return accumulated
+        return {scope: v / total_rkm for scope, v in accumulated.items()}
+
+    @property
+    def emissions_by_type(self) -> dict[ItemType, DefaultImpactVector]:
+        """Emissions per revenue-km grouped by component type.
+
+        All ``ItemType`` members are present as keys (zero vector if no items
+        for that type).  Returns zero vectors if revenue-km is zero.
+
+        :returns: Mapping from ``ItemType`` to per-revenue-km emissions.
+        """
+        total_rkm = sum(self.revenue_km.values())
+        accumulated = {itype: DefaultImpactVector.zero() for itype in ItemType}
+        for item in self.items:
+            accumulated[item.type] = accumulated[item.type] + item.emission_vector
+        if total_rkm <= 0:
+            return accumulated
+        return {itype: v / total_rkm for itype, v in accumulated.items()}

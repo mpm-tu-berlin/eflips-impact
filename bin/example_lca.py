@@ -6,7 +6,7 @@ Pipeline:
    (reads ``lca_overrides.json`` for per-vehicle overrides and CPT
    infrastructure parameters).
 3. Extract simulation data and run ``calculate_lca``.
-4. Print per-vehicle-type and fleet-total GWP results.
+4. Print per-scope and fleet-total GWP results.
 
 Usage::
 
@@ -20,16 +20,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import eflips.model
 from eflips.impact.lca import calculate_lca, init_lca_params
-from eflips.model import VehicleType
 from eflips.impact.utils import init_fleet
-from sqlalchemy.orm import Session
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+# TODO delete this before release
 DATABASE_URL = "sqlite:////home/shuyao/PycharmProjects/eflips-data/Simulation_term.db"
 SCENARIO_ID = 1
 
@@ -39,13 +37,16 @@ LCA_JSON = _DEFAULTS / "lca.json"
 LCA_OVERRIDES_JSON = _DEFAULTS / "lca_overrides.json"
 
 
-
 # ---------------------------------------------------------------------------
 # Step 1: Init fleet
 # ---------------------------------------------------------------------------
 print("Step 1: Init fleet ...")
-init_fleet(scenario=SCENARIO_ID, filepath=_DEFAULTS / "fleet.json",
-           delete_existing_data=True, database_url=DATABASE_URL)
+init_fleet(
+    scenario=SCENARIO_ID,
+    filepath=_DEFAULTS / "fleet.json",
+    delete_existing_data=True,
+    database_url=DATABASE_URL,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -58,41 +59,38 @@ init_lca_params(
     database_url=DATABASE_URL,
 )
 print("  lca_params written to DB.\n")
+
 # ---------------------------------------------------------------------------
 # Step 3: calculate LCA
 # ---------------------------------------------------------------------------
-
 print("Step 3: running calculate_lca ...")
 result = calculate_lca(scenario=SCENARIO_ID, database_url=DATABASE_URL)
 
-engine = eflips.model.create_engine(DATABASE_URL)
-with Session(engine) as session:
-    # ---------------------------------------------------------------------------
-    # Step 4: print results
-    # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Step 4: print results
+# ---------------------------------------------------------------------------
+print("\n=== LCA Results (GWP, kg CO₂-eq / revenue-km) ===\n")
 
-    print("\n=== LCA Results (GWP, kg CO₂-eq / revenue-km) ===\n")
+total_rkm = sum(result.revenue_km.values())
+by_scope = result.emissions_by_scope
+by_type = result.emissions_by_type
+total = result.total_per_revenue_km
 
-    vtypes = {
-        int(vt.id): vt
-        for vt in session.query(VehicleType)
-        .filter(VehicleType.scenario_id == SCENARIO_ID)
-        .all()
-    }
+header = f"{'Category':<30} {'GWP (kg CO₂-eq/Nwkm)':>24}"
+sep = "-" * (30 + 1 + 24)
 
-    header = f"{'VehicleType':<30} {'Production':>14} {'Use phase':>14} {'Nwkm/a':>14}"
-    print(header)
-    print("-" * len(header))
+print("-- By lifecycle scope --")
+print(header)
+print(sep)
+for scope, iv in by_scope.items():
+    print(f"{scope.name:<30} {iv.gwp:>24.6f}")
 
-    for vtype_id in sorted(result.revenue_km):
-        name = vtypes[vtype_id].name if vtype_id in vtypes else str(vtype_id)
-        prod = result.production.get(vtype_id)
-        use = result.use_phase.get(vtype_id)
-        nwkm = result.revenue_km[vtype_id]
-        prod_gwp = prod.gwp if prod is not None else float("nan")
-        use_gwp = use.gwp if use is not None else float("nan")
-        print(f"{name:<30} {prod_gwp:>14.4f} {use_gwp:>14.4f} {nwkm:>14.0f}")
+print("\n-- By component type --")
+print(header)
+print(sep)
+for itype, iv in by_type.items():
+    print(f"{itype.name:<30} {iv.gwp:>24.6f}")
 
-    print("-" * len(header))
-    print(f"\nInfrastructure (fleet):  {result.infrastructure.gwp:.4f} kg CO₂-eq / Nwkm")
-    print(f"Total (fleet):           {result.total.gwp:.4f} kg CO₂-eq / Nwkm")
+print(sep)
+print(f"\n{'Total (fleet):':<30} {total.gwp:>24.6f} kg CO₂-eq / Nwkm")
+print(f"{'Total fleet Nwkm/a:':<30} {total_rkm:>24.0f}")

@@ -9,18 +9,23 @@ from eflips.model import BatteryType, EnergySource, Scenario, VehicleType
 
 from eflips.impact.lca.calculation import (
     amortize,
-    amortize_production,
     calculate_battery_emissions,
     calculate_chassis_emissions,
     calculate_energy_emissions_beb,
     calculate_energy_emissions_diesel,
     calculate_lca,
     calculate_motor_emissions,
+    calculate_vehicle_type_emissions,
     efficiency_chain,
     mass_based_emissions,
     normalize_to_revenue_km,
 )
-from eflips.impact.lca.dataclasses import BatteryTypeLcaParams, VehicleTypeLcaParams
+from eflips.impact.lca.dataclasses import (
+    BatteryTypeLcaParams,
+    ItemType,
+    LcaScope,
+    VehicleTypeLcaParams,
+)
 from eflips.impact.lca.util import DefaultImpactVector
 
 # ---------------------------------------------------------------------------
@@ -199,40 +204,97 @@ def test_calculate_energy_emissions_diesel() -> None:
 
 
 # ---------------------------------------------------------------------------
-# amortize_production
+# calculate_vehicle_type_emissions
 # ---------------------------------------------------------------------------
 
 
-def test_amortize_production_beb() -> None:
-    e_chassis = DefaultImpactVector(gwp=120_000.0)
-    e_motor = DefaultImpactVector(gwp=500.0)
-    e_battery = DefaultImpactVector(gwp=50_000.0)
-    result = amortize_production(
-        e_chassis,
-        e_motor,
-        e_battery,
-        vehicle_lifetime_years=12.0,
+def _make_beb_vtype() -> MagicMock:
+    vtype = MagicMock(spec=VehicleType)
+    vtype.id = 1
+    vtype.name_short = "EN"
+    vtype.energy_source = EnergySource.BATTERY_ELECTRIC
+    vtype.empty_mass = 12_000.0
+    vtype.charging_efficiency = 0.95
+    vtype.battery_capacity = 500.0
+    return vtype
+
+
+def _make_battery_type() -> MagicMock:
+    bt = MagicMock(spec=BatteryType)
+    bt.id = 1
+    bt.specific_mass = 1.0  # 500 kg
+    bt.tco_parameters = None
+    bt.lca_params = BatteryTypeLcaParams(
+        emission_factors_per_kg=DefaultImpactVector(gwp=100.0),
         battery_lifetime_years=8.0,
-        energy_source=EnergySource.BATTERY_ELECTRIC,
+    ).to_dict()
+    return bt
+
+
+def test_calculate_vehicle_type_emissions_beb_item_count() -> None:
+    """BEB produces 5 items: chassis, motor, battery, energy, maintenance."""
+    items = calculate_vehicle_type_emissions(
+        vtype=_make_beb_vtype(),
+        battery_type=_make_battery_type(),
+        params=_beb_params_simple(),
+        n_total=3,
+        vehicle_km=350_000.0,
     )
-    expected_body = (120_000.0 + 500.0) / 12.0
-    expected_battery = 50_000.0 / 8.0
-    assert result.gwp == pytest.approx(expected_body + expected_battery)
+    assert len(items) == 5
 
 
-def test_amortize_production_diesel() -> None:
-    e_chassis = DefaultImpactVector(gwp=100_000.0)
-    e_motor = DefaultImpactVector(gwp=3000.0)
-    e_battery = DefaultImpactVector.zero()
-    result = amortize_production(
-        e_chassis,
-        e_motor,
-        e_battery,
+def test_calculate_vehicle_type_emissions_beb_scopes_and_types() -> None:
+    items = calculate_vehicle_type_emissions(
+        vtype=_make_beb_vtype(),
+        battery_type=_make_battery_type(),
+        params=_beb_params_simple(),
+        n_total=3,
+        vehicle_km=350_000.0,
+    )
+    prod_eol = [i for i in items if i.scope == LcaScope.PRODUCTION_AND_EOL]
+    use = [i for i in items if i.scope == LcaScope.USE_PHASE]
+    assert len(prod_eol) == 3  # chassis, motor, battery
+    assert len(use) == 2  # energy, maintenance
+    assert any(i.type == ItemType.BATTERY for i in prod_eol)
+    assert any(i.type == ItemType.ENERGY for i in use)
+    assert all(i.name == "EN" for i in items)
+    assert all(i.emission_vector.gwp > 0.0 for i in items)
+
+
+def test_calculate_vehicle_type_emissions_diesel_no_battery_item() -> None:
+    """Diesel bus produces 4 items: chassis, motor, energy, maintenance (no battery)."""
+    vtype = MagicMock(spec=VehicleType)
+    vtype.id = 2
+    vtype.name_short = "DI"
+    vtype.energy_source = EnergySource.DIESEL
+    vtype.empty_mass = 13_000.0
+
+    params = VehicleTypeLcaParams(
+        chassis_emission_factors_per_kg=DefaultImpactVector(gwp=10.0),
+        motor_rated_power_kw=180.0,
+        motor_emission_factors_per_kg=None,
+        motor_power_to_weight_ratio=None,
+        motor_emission_factors_per_unit=DefaultImpactVector(gwp=3000.0),
+        motor_mass_kg=400.0,
         vehicle_lifetime_years=12.0,
-        battery_lifetime_years=None,
-        energy_source=EnergySource.DIESEL,
+        efficiency_mv_to_lv=None,
+        efficiency_lv_ac_to_dc=None,
+        electricity_emission_factors_per_kwh=None,
+        diesel_emission_factors_per_kg=DefaultImpactVector(gwp=3.76),
+        average_consumption_kwh_per_km=0.0,
+        diesel_consumption_kg_per_km=0.28,
+        maintenance_per_year={EnergySource.DIESEL: DefaultImpactVector(gwp=800.0)},
     )
-    assert result.gwp == pytest.approx((100_000.0 + 3000.0) / 12.0)
+    items = calculate_vehicle_type_emissions(
+        vtype=vtype,
+        battery_type=None,
+        params=params,
+        n_total=2,
+        vehicle_km=220_000.0,
+    )
+    assert len(items) == 4
+    assert not any(i.type == ItemType.BATTERY for i in items)
+    assert sum(1 for i in items if i.scope == LcaScope.PRODUCTION_AND_EOL) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -247,42 +309,45 @@ def test_calculate_lca_runs(scenario_obj: Scenario) -> None:
 
 def test_calculate_lca_vehicle_types_in_result(scenario_obj: Scenario) -> None:
     result = calculate_lca(scenario_obj)
-    assert 12 in result.production
-    assert 13 in result.production
-    assert 12 in result.use_phase
-    assert 13 in result.use_phase
+    vehicle_names = {
+        item.name for item in result.items if item.type != ItemType.INFRASTRUCTURE
+    }
+    assert len(vehicle_names) >= 2
 
 
 def test_calculate_lca_positive_gwp(scenario_obj: Scenario) -> None:
     result = calculate_lca(scenario_obj)
-    assert result.total.gwp > 0.0
-    for iv in result.production.values():
-        assert iv.gwp > 0.0
-    for iv in result.use_phase.values():
-        assert iv.gwp > 0.0
-    assert result.infrastructure.gwp > 0.0
+    assert result.total_per_revenue_km.gwp > 0.0
+    for item in result.items:
+        assert item.emission_vector.gwp > 0.0
+
+
+def test_calculate_lca_infrastructure_items_present(scenario_obj: Scenario) -> None:
+    result = calculate_lca(scenario_obj)
+    infra_items = [i for i in result.items if i.type == ItemType.INFRASTRUCTURE]
+    assert len(infra_items) > 0
+    assert all(i.scope == LcaScope.PRODUCTION_AND_EOL for i in infra_items)
 
 
 def test_calculate_lca_total_correct_shared_denominator(scenario_obj: Scenario) -> None:
-    """Total uses a shared Nwkm denominator, not a sum of per-type results."""
+    """total_per_revenue_km equals sum of all item emissions divided by total fleet Nwkm."""
     result = calculate_lca(scenario_obj)
     total_nwkm = sum(result.revenue_km.values())
-    # Reconstruct fleet-level numerators from per-type per-Nwkm values
-    prod_fleet_gwp = sum(
-        result.production[t].gwp * result.revenue_km[t] for t in result.production
-    )
-    use_fleet_gwp = sum(
-        result.use_phase[t].gwp * result.revenue_km[t] for t in result.use_phase
-    )
-    expected_total_gwp = (
-        prod_fleet_gwp + use_fleet_gwp
-    ) / total_nwkm + result.infrastructure.gwp
-    assert result.total.gwp == pytest.approx(expected_total_gwp, rel=1e-6)
+    expected_gwp = sum(item.emission_vector.gwp for item in result.items) / total_nwkm
+    assert result.total_per_revenue_km.gwp == pytest.approx(expected_gwp, rel=1e-6)
 
 
 def test_calculate_lca_use_phase_dominates_production(scenario_obj: Scenario) -> None:
-    """For BEBs, energy use should dominate over production emissions."""
+    """For BEBs, energy use should dominate over production+EoL emissions."""
     result = calculate_lca(scenario_obj)
-    total_prod = sum(iv.gwp for iv in result.production.values())
-    total_use = sum(iv.gwp for iv in result.use_phase.values())
-    assert total_use > total_prod
+    total_prod_gwp = sum(
+        item.emission_vector.gwp
+        for item in result.items
+        if item.scope == LcaScope.PRODUCTION_AND_EOL
+    )
+    total_use_gwp = sum(
+        item.emission_vector.gwp
+        for item in result.items
+        if item.scope == LcaScope.USE_PHASE
+    )
+    assert total_use_gwp > total_prod_gwp
