@@ -21,10 +21,10 @@ from eflips.impact.lca.calculation import (
     normalize_to_revenue_km,
 )
 from eflips.impact.lca.dataclasses import (
-    BatteryTypeLcaParams,
+    BatteryTypeLCAParams,
     ItemType,
-    LcaScope,
-    VehicleTypeLcaParams,
+    LCAScope,
+    VehicleTypeLCAParams,
 )
 from eflips.impact.lca.util import DefaultImpactVector
 
@@ -67,8 +67,8 @@ def test_normalize_to_revenue_km() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _beb_params_simple() -> VehicleTypeLcaParams:
-    return VehicleTypeLcaParams(
+def _beb_params_simple() -> VehicleTypeLCAParams:
+    return VehicleTypeLCAParams(
         chassis_emission_factors_per_kg=DefaultImpactVector(gwp=10.0),
         motor_rated_power_kw=200.0,
         motor_emission_factors_per_kg=DefaultImpactVector(gwp=5.0),
@@ -115,7 +115,7 @@ def test_calculate_motor_emissions_beb() -> None:
 
 
 def test_calculate_motor_emissions_diesel() -> None:
-    params = VehicleTypeLcaParams(
+    params = VehicleTypeLCAParams(
         chassis_emission_factors_per_kg=DefaultImpactVector(gwp=10.0),
         motor_rated_power_kw=180.0,
         motor_emission_factors_per_kg=None,
@@ -156,7 +156,7 @@ def test_calculate_battery_emissions_with_battery() -> None:
     bt.specific_mass = 1.0  # 1 kg/kWh → 500 kg
     bt.id = 1
     bt.tco_parameters = None
-    bt.lca_params = BatteryTypeLcaParams(
+    bt.lca_parameters = BatteryTypeLCAParams(
         emission_factors_per_kg=DefaultImpactVector(gwp=100.0),
         battery_lifetime_years=8.0,
     ).to_dict()
@@ -182,7 +182,7 @@ def test_calculate_energy_emissions_beb() -> None:
 
 
 def test_calculate_energy_emissions_diesel() -> None:
-    params = VehicleTypeLcaParams(
+    params = VehicleTypeLCAParams(
         chassis_emission_factors_per_kg=DefaultImpactVector(gwp=10.0),
         motor_rated_power_kw=180.0,
         motor_emission_factors_per_kg=None,
@@ -224,7 +224,7 @@ def _make_battery_type() -> MagicMock:
     bt.id = 1
     bt.specific_mass = 1.0  # 500 kg
     bt.tco_parameters = None
-    bt.lca_params = BatteryTypeLcaParams(
+    bt.lca_parameters = BatteryTypeLCAParams(
         emission_factors_per_kg=DefaultImpactVector(gwp=100.0),
         battery_lifetime_years=8.0,
     ).to_dict()
@@ -251,8 +251,8 @@ def test_calculate_vehicle_type_emissions_beb_scopes_and_types() -> None:
         n_total=3,
         vehicle_km=350_000.0,
     )
-    prod_eol = [i for i in items if i.scope == LcaScope.PRODUCTION_AND_EOL]
-    use = [i for i in items if i.scope == LcaScope.USE_PHASE]
+    prod_eol = [i for i in items if i.scope == LCAScope.PRODUCTION_AND_EOL]
+    use = [i for i in items if i.scope == LCAScope.USE_PHASE]
     assert len(prod_eol) == 3  # chassis, motor, battery
     assert len(use) == 2  # energy, maintenance
     assert any(i.type == ItemType.BATTERY for i in prod_eol)
@@ -269,7 +269,7 @@ def test_calculate_vehicle_type_emissions_diesel_no_battery_item() -> None:
     vtype.energy_source = EnergySource.DIESEL
     vtype.empty_mass = 13_000.0
 
-    params = VehicleTypeLcaParams(
+    params = VehicleTypeLCAParams(
         chassis_emission_factors_per_kg=DefaultImpactVector(gwp=10.0),
         motor_rated_power_kw=180.0,
         motor_emission_factors_per_kg=None,
@@ -294,7 +294,7 @@ def test_calculate_vehicle_type_emissions_diesel_no_battery_item() -> None:
     )
     assert len(items) == 4
     assert not any(i.type == ItemType.BATTERY for i in items)
-    assert sum(1 for i in items if i.scope == LcaScope.PRODUCTION_AND_EOL) == 2
+    assert sum(1 for i in items if i.scope == LCAScope.PRODUCTION_AND_EOL) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -326,7 +326,7 @@ def test_calculate_lca_infrastructure_items_present(scenario_obj: Scenario) -> N
     result = calculate_lca(scenario_obj)
     infra_items = [i for i in result.items if i.type == ItemType.INFRASTRUCTURE]
     assert len(infra_items) > 0
-    assert all(i.scope == LcaScope.PRODUCTION_AND_EOL for i in infra_items)
+    assert all(i.scope == LCAScope.PRODUCTION_AND_EOL for i in infra_items)
 
 
 def test_calculate_lca_total_correct_shared_denominator(scenario_obj: Scenario) -> None:
@@ -343,11 +343,11 @@ def test_calculate_lca_use_phase_dominates_production(scenario_obj: Scenario) ->
     total_prod_gwp = sum(
         item.emission_vector.gwp
         for item in result.items
-        if item.scope == LcaScope.PRODUCTION_AND_EOL
+        if item.scope == LCAScope.PRODUCTION_AND_EOL
     )
     total_use_gwp = sum(
         item.emission_vector.gwp
         for item in result.items
-        if item.scope == LcaScope.USE_PHASE
+        if item.scope == LCAScope.USE_PHASE
     )
     assert total_use_gwp > total_prod_gwp

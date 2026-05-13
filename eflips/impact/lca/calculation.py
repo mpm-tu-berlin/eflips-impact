@@ -28,13 +28,13 @@ from eflips.model import (
 )
 
 from eflips.impact.lca.dataclasses import (
-    BatteryTypeLcaParams,
-    ChargingPointTypeLcaParams,
+    BatteryTypeLCAParams,
+    ChargingPointTypeLCAParams,
     ItemType,
-    LcaItem,
-    LcaResult,
-    LcaScope,
-    VehicleTypeLcaParams,
+    LCAItem,
+    LCAResult,
+    LCAScope,
+    VehicleTypeLCAParams,
 )
 from eflips.impact.utils.extraction import (
     AreaSimData,
@@ -125,7 +125,7 @@ def calculate_chassis_emissions(
     empty_mass_kg: float,
     motor_mass_kg: float,
     battery_mass_kg: float,
-    params: VehicleTypeLcaParams,
+    params: VehicleTypeLCAParams,
 ) -> DefaultImpactVector:
     """Calculate production + EoL emissions for the chassis (§1.4.2).
 
@@ -146,7 +146,7 @@ def calculate_chassis_emissions(
 
 
 def calculate_motor_emissions(
-    energy_source: EnergySource, params: VehicleTypeLcaParams
+    energy_source: EnergySource, params: VehicleTypeLCAParams
 ) -> DefaultImpactVector:
     """Calculate production + EoL emissions for the motor (§1.4.3/§1.4.4).
 
@@ -185,9 +185,9 @@ def calculate_battery_emissions(
 
     battery_mass = calculate_battery_mass_kg(vehicle_type, battery_type)
 
-    if battery_type.lca_params is None:
-        raise ValueError(f"BatteryType {battery_type.id} has no lca_params set.")
-    bt_params = BatteryTypeLcaParams.from_dict(battery_type.lca_params)
+    if battery_type.lca_parameters is None:
+        raise ValueError(f"BatteryType {battery_type.id} has no lca_parameters set.")
+    bt_params = BatteryTypeLCAParams.from_dict(battery_type.lca_parameters)
 
     # Consistency check
     tco_life = None
@@ -202,31 +202,31 @@ def calculate_battery_emissions(
 def calculate_vehicle_type_emissions(
     vtype: VehicleType,
     battery_type: BatteryType | None,
-    params: VehicleTypeLcaParams,
+    params: VehicleTypeLCAParams,
     n_total: int,
     vehicle_km: float,
-) -> list[LcaItem]:
+) -> list[LCAItem]:
     """Calculate annual fleet LCA items for one vehicle type.
 
-    Returns separate ``LcaItem`` instances for chassis, motor, battery (BEB
+    Returns separate ``LCAItem`` instances for chassis, motor, battery (BEB
     only), energy, and maintenance — each tagged with the vehicle type's
-    ``name_short``, an ``ItemType``, and an ``LcaScope``.  Emission vectors
+    ``name_short``, an ``ItemType``, and an ``LCAScope``.  Emission vectors
     are annual fleet totals (amortised where applicable, fleet-scaled by
     *n_total*); they are **not** normalised to per-revenue-km.
 
     :param vtype: The vehicle type ORM object.
     :param battery_type: The battery type, or ``None`` for ICEB or BEB
         without an assigned battery.
-    :param params: Deserialised ``VehicleTypeLcaParams``.
+    :param params: Deserialised ``VehicleTypeLCAParams``.
     :param n_total: Fleet size (ready + reserve) for this vehicle type.
     :param vehicle_km: Annual driven vehicle-km (fleet aggregate, used for
         energy consumption).
-    :returns: List of annual-fleet ``LcaItem`` objects.
+    :returns: List of annual-fleet ``LCAItem`` objects.
     :raises ValueError: If required parameters are missing for the vehicle's
         energy source.
     """
     name = vtype.name_short
-    items: list[LcaItem] = []
+    items: list[LCAItem] = []
 
     # Battery mass is also needed to subtract from empty mass for chassis.
     e_battery_total, battery_mass = calculate_battery_emissions(vtype, battery_type)
@@ -251,10 +251,10 @@ def calculate_vehicle_type_emissions(
         float(vtype.empty_mass), motor_mass_for_chassis, battery_mass, params
     )
     items.append(
-        LcaItem(
+        LCAItem(
             name=name,
             type=ItemType.VEHICLE,
-            scope=LcaScope.PRODUCTION_AND_EOL,
+            scope=LCAScope.PRODUCTION_AND_EOL,
             emission_vector=amortize(e_chassis_total, params.vehicle_lifetime_years) * n_total,
         )
     )
@@ -262,24 +262,24 @@ def calculate_vehicle_type_emissions(
     # Motor (prod+EoL, amortised over vehicle lifetime, fleet-scaled)
     e_motor_total = calculate_motor_emissions(vtype.energy_source, params)
     items.append(
-        LcaItem(
+        LCAItem(
             name=name,
             type=ItemType.VEHICLE,
-            scope=LcaScope.PRODUCTION_AND_EOL,
+            scope=LCAScope.PRODUCTION_AND_EOL,
             emission_vector=amortize(e_motor_total, params.vehicle_lifetime_years) * n_total,
         )
     )
 
     # Battery (BEB only, prod+EoL, amortised over battery lifetime, fleet-scaled)
     if vtype.energy_source == EnergySource.BATTERY_ELECTRIC and battery_type is not None:
-        if battery_type.lca_params is None:
-            raise ValueError(f"BatteryType {battery_type.id} has no lca_params set.")
-        bt_params = BatteryTypeLcaParams.from_dict(battery_type.lca_params)
+        if battery_type.lca_parameters is None:
+            raise ValueError(f"BatteryType {battery_type.id} has no lca_parameters set.")
+        bt_params = BatteryTypeLCAParams.from_dict(battery_type.lca_parameters)
         items.append(
-            LcaItem(
+            LCAItem(
                 name=name,
                 type=ItemType.BATTERY,
-                scope=LcaScope.PRODUCTION_AND_EOL,
+                scope=LCAScope.PRODUCTION_AND_EOL,
                 emission_vector=amortize(e_battery_total, bt_params.battery_lifetime_years) * n_total,
             )
         )
@@ -301,20 +301,20 @@ def calculate_vehicle_type_emissions(
         raise ValueError(f"Unsupported energy source: {vtype.energy_source}")
 
     items.append(
-        LcaItem(
+        LCAItem(
             name=name,
             type=ItemType.ENERGY,
-            scope=LcaScope.USE_PHASE,
+            scope=LCAScope.USE_PHASE,
             emission_vector=e_energy,
         )
     )
 
     # Maintenance (use phase, per vehicle × fleet size)
     items.append(
-        LcaItem(
+        LCAItem(
             name=name,
             type=ItemType.VEHICLE,
-            scope=LcaScope.USE_PHASE,
+            scope=LCAScope.USE_PHASE,
             emission_vector=params.maintenance_per_year[vtype.energy_source] * n_total,
         )
     )
@@ -330,7 +330,7 @@ def calculate_vehicle_type_emissions(
 def calculate_energy_emissions_beb(
     annual_energy_kwh: float,
     charging_efficiency: float,
-    params: VehicleTypeLcaParams,
+    params: VehicleTypeLCAParams,
 ) -> DefaultImpactVector:
     """Calculate electricity use-phase emissions for BEB (§1.5.1).
 
@@ -359,7 +359,7 @@ def calculate_energy_emissions_beb(
 
 
 def calculate_energy_emissions_diesel(
-    annual_diesel_kg: float, params: VehicleTypeLcaParams
+    annual_diesel_kg: float, params: VehicleTypeLCAParams
 ) -> DefaultImpactVector:
     """Calculate diesel use-phase emissions for ICEB (§1.5.2).
 
@@ -398,38 +398,38 @@ def power_scaled_emissions(
     return ref_emission * float((peak_power_kw / ref_power_kw) ** exponent)
 
 
-def _get_cpt_params(entity: Any, entity_label: str) -> ChargingPointTypeLcaParams:
+def _get_cpt_params(entity: Any, entity_label: str) -> ChargingPointTypeLCAParams:
     """Load and validate ChargingPointType LCA params from an entity.
 
     :param entity: An ``Area`` or ``Station`` ORM object with a
         ``charging_point_type`` relationship.
     :param entity_label: Human-readable label for error messages.
-    :returns: Deserialised ``ChargingPointTypeLcaParams``.
+    :returns: Deserialised ``ChargingPointTypeLCAParams``.
     :raises ValueError: If the charging point type or its LCA params are
         missing.
     """
     cpt = entity.charging_point_type
     if cpt is None:
         raise ValueError(f"{entity_label} has no charging_point_type assigned.")
-    if cpt.lca_params is None:
+    if cpt.lca_parameters is None:
         raise ValueError(
-            f"ChargingPointType {cpt.id} for {entity_label} has no " f"lca_params set."
+            f"ChargingPointType {cpt.id} for {entity_label} has no " f"lca_parameters set."
         )
-    return ChargingPointTypeLcaParams.from_dict(cpt.lca_params)
+    return ChargingPointTypeLCAParams.from_dict(cpt.lca_parameters)
 
 
 def calculate_depot_area_emissions(
     area: Area,
     area_sim: AreaSimData,
-) -> LcaItem:
-    """Calculate annual infrastructure LcaItem for one depot area (§1.6.2).
+) -> LCAItem:
+    """Calculate annual infrastructure LCAItem for one depot area (§1.6.2).
 
     Issues oversizing warnings when the peak vehicle count is
     significantly below the area capacity.
 
     :param area: The depot ``Area`` ORM object.
     :param area_sim: Extracted simulation data for this area.
-    :returns: Annual amortised ``LcaItem`` for this area (not normalised to
+    :returns: Annual amortised ``LCAItem`` for this area (not normalised to
         per-revenue-km).
     """
     cpt_params = _get_cpt_params(area, f"Area {area.id}")
@@ -469,10 +469,10 @@ def calculate_depot_area_emissions(
         + e_transformers
         + cpt_params.control_unit_emissions
     )
-    return LcaItem(
+    return LCAItem(
         name=f"depot_area_{area.id}",
         type=ItemType.INFRASTRUCTURE,
-        scope=LcaScope.PRODUCTION_AND_EOL,
+        scope=LCAScope.PRODUCTION_AND_EOL,
         emission_vector=amortize(e_total, cpt_params.infrastructure_lifetime_years),
     )
 
@@ -480,12 +480,12 @@ def calculate_depot_area_emissions(
 def calculate_terminal_station_emissions(
     station: Station,
     station_sim: StationSimData,
-) -> LcaItem:
-    """Calculate annual infrastructure LcaItem for a terminal station (§1.6.3).
+) -> LCAItem:
+    """Calculate annual infrastructure LCAItem for a terminal station (§1.6.3).
 
     :param station: The ``Station`` ORM object.
     :param station_sim: Extracted simulation data for this station.
-    :returns: Annual amortised ``LcaItem`` for this station (not normalised to
+    :returns: Annual amortised ``LCAItem`` for this station (not normalised to
         per-revenue-km).
     """
     cpt_params = _get_cpt_params(station, f"Station {station.id}")
@@ -533,10 +533,10 @@ def calculate_terminal_station_emissions(
         + e_concrete_per_plug * n_plugs
         + cpt_params.control_unit_emissions
     )
-    return LcaItem(
+    return LCAItem(
         name=f"station_{station.id}",
         type=ItemType.INFRASTRUCTURE,
-        scope=LcaScope.PRODUCTION_AND_EOL,
+        scope=LCAScope.PRODUCTION_AND_EOL,
         emission_vector=amortize(e_total, cpt_params.infrastructure_lifetime_years),
     )
 
@@ -552,10 +552,10 @@ def calculate_lca(
     scaling_window: Optional[tuple[datetime, datetime]] = None,
     eta_avail: float = 0.9,
     database_url: Optional[str] = None,
-) -> LcaResult:
+) -> LCAResult:
     """Calculate the life-cycle assessment for a scenario.
 
-    Takes an eflips-model scenario with populated ``lca_params`` on all
+    Takes an eflips-model scenario with populated ``lca_parameters`` on all
     relevant entities and returns per-revenue-km emissions broken down
     by contributor and vehicle type.
 
@@ -571,8 +571,8 @@ def calculate_lca(
     :param eta_avail: Technical availability factor (default ``0.9``).
     :param database_url: Database URL; falls back to ``$DATABASE_URL`` when
         ``scenario`` is not already bound to a session.
-    :returns: An ``LcaResult`` with per-revenue-km emissions.
-    :raises ValueError: If ``lca_params`` are missing on required entities.
+    :returns: An ``LCAResult`` with per-revenue-km emissions.
+    :raises ValueError: If ``lca_parameters`` are missing on required entities.
     """
     from eflips.impact.utils.extraction import get_extraction_window, get_scaling_window
     from eflips.impact.utils.session import create_session
@@ -601,7 +601,7 @@ def calculate_lca(
             .all()
         )
 
-        all_items: list[LcaItem] = []
+        all_items: list[LCAItem] = []
         revenue_km_per_type: dict[str, float] = {}
         vehicle_km_per_type: dict[str, float] = {}
         total_revenue_km = 0.0
@@ -615,10 +615,10 @@ def calculate_lca(
                 )
                 continue
 
-            if vtype.lca_params is None:
-                raise ValueError(f"VehicleType {vtype_id} has no lca_params set.")
-            params = VehicleTypeLcaParams.from_dict(
-                vtype.lca_params, energy_source=vtype.energy_source
+            if vtype.lca_parameters is None:
+                raise ValueError(f"VehicleType {vtype_id} has no lca_parameters set.")
+            params = VehicleTypeLCAParams.from_dict(
+                vtype.lca_parameters, energy_source=vtype.energy_source
             )
 
             battery_type: BatteryType | None = vtype.battery_type
@@ -687,7 +687,7 @@ def calculate_lca(
                 continue
             all_items.append(calculate_terminal_station_emissions(station, station_sim))
 
-        return LcaResult(
+        return LCAResult(
             items=all_items,
             revenue_km=revenue_km_per_type,
             vehicle_km=vehicle_km_per_type,

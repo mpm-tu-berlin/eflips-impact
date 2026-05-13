@@ -185,11 +185,11 @@ def db_engine(tmp_path: Path):  # type: ignore[type-arg]
         conn.execute(
             text("UPDATE \"VehicleType\" SET energy_source = 'BATTERY_ELECTRIC'")
         )
-        conn.execute(text("ALTER TABLE VehicleType ADD COLUMN lca_params JSON"))
-        conn.execute(text("ALTER TABLE BatteryType ADD COLUMN lca_params JSON"))
-        conn.execute(text("ALTER TABLE ChargingPointType ADD COLUMN lca_params JSON"))
+        conn.execute(text("ALTER TABLE VehicleType ADD COLUMN lca_parameters JSON"))
+        conn.execute(text("ALTER TABLE BatteryType ADD COLUMN lca_parameters JSON"))
+        conn.execute(text("ALTER TABLE ChargingPointType ADD COLUMN lca_parameters JSON"))
 
-    command.stamp(_make_alembic_cfg(engine), "head")
+    command.stamp(_make_alembic_cfg(engine), "heads")
     try:
         yield engine
     finally:
@@ -251,22 +251,22 @@ def tco_session(fleet_session: Session, scenario: Scenario) -> Session:
     """
     from eflips.impact.tco import init_tco_params
     from eflips.impact.tco.dataclasses import (
-        ScenarioTCOParameter,
-        VehicleTypeTCOParameter,
-        BatteryTypeTCOParameter,
-        ChargingPointTypeTCOParameter,
-        ChargingInfrastructureTCOParameter,
+        ScenarioTCOParams,
+        VehicleTypeTCOParams,
+        BatteryTypeTCOParams,
+        ChargingPointTypeTCOParams,
+        ChargingInfrastructureTCOParams,
     )
 
     init_tco_params(
         scenario,
-        scenario_params=ScenarioTCOParameter.from_dict(SCENARIO_TCO_PARAMS),
+        scenario_params=ScenarioTCOParams.from_dict(SCENARIO_TCO_PARAMS),
         vehicle_type_params=[
-            VehicleTypeTCOParameter.from_dict({"name_short": ns, **params})
+            VehicleTypeTCOParams.from_dict({"name_short": ns, **params})
             for ns, params in VEHICLE_TYPE_TCO_PARAMS.items()
         ],
         battery_type_params=[
-            BatteryTypeTCOParameter(
+            BatteryTypeTCOParams(
                 vehicle_name_short=ns,
                 procurement_cost=BATTERY_TCO_PARAMS["procurement_cost"],
                 useful_life=BATTERY_TCO_PARAMS["useful_life"],
@@ -275,18 +275,18 @@ def tco_session(fleet_session: Session, scenario: Scenario) -> Session:
             for ns in VEHICLE_TYPE_TCO_PARAMS
         ],
         charging_point_type_params=[
-            ChargingPointTypeTCOParameter.from_dict(
+            ChargingPointTypeTCOParams.from_dict(
                 {"type": "depot", **DEPOT_CPT_TCO_PARAMS}
             ),
-            ChargingPointTypeTCOParameter.from_dict(
+            ChargingPointTypeTCOParams.from_dict(
                 {"type": "opportunity", **OPPORTUNITY_CPT_TCO_PARAMS}
             ),
         ],
         charging_infra_params=[
-            ChargingInfrastructureTCOParameter.from_dict(
+            ChargingInfrastructureTCOParams.from_dict(
                 {"type": "depot", **DEPOT_STATION_TCO_PARAMS}
             ),
-            ChargingInfrastructureTCOParameter.from_dict(
+            ChargingInfrastructureTCOParams.from_dict(
                 {"type": "station", **OPPORTUNITY_STATION_TCO_PARAMS}
             ),
         ],

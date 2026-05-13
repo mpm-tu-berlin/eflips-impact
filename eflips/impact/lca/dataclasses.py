@@ -1,7 +1,7 @@
 """LCA parameter dataclasses and result container.
 
-Defines the typed structures stored in ``lca_params`` JSONB columns on
-eflips-model entities, plus the ``LcaResult`` output of the calculation.
+Defines the typed structures stored in ``lca_parameters`` JSONB columns on
+eflips-model entities, plus the ``LCAResult`` output of the calculation.
 """
 
 from __future__ import annotations
@@ -65,13 +65,13 @@ def _iv_or_none_from_dict(
 
 
 # ---------------------------------------------------------------------------
-# VehicleTypeLcaParams
+# VehicleTypeLCAParams
 # ---------------------------------------------------------------------------
 
 
 @dataclass
-class VehicleTypeLcaParams:
-    """LCA parameters stored on ``VehicleType.lca_params``.
+class VehicleTypeLCAParams:
+    """LCA parameters stored on ``VehicleType.lca_parameters``.
 
     Attributes are grouped by lifecycle phase.  Fields that are irrelevant
     for a given ``EnergySource`` must be ``None`` (enforced by
@@ -226,12 +226,12 @@ class VehicleTypeLcaParams:
         cls,
         data: dict[str, Any],
         energy_source: EnergySource | None = None,
-    ) -> VehicleTypeLcaParams:
+    ) -> VehicleTypeLCAParams:
         """Deserialize from a JSONB dict.
 
         :param data: The raw dictionary from the JSONB column.
         :param energy_source: Optional energy source for validation.
-        :returns: A populated ``VehicleTypeLcaParams``.
+        :returns: A populated ``VehicleTypeLCAParams``.
         """
         return cls(
             chassis_emission_factors_per_kg=DefaultImpactVector.from_dict(
@@ -285,13 +285,13 @@ class VehicleTypeLcaParams:
 
 
 # ---------------------------------------------------------------------------
-# BatteryTypeLcaParams
+# BatteryTypeLCAParams
 # ---------------------------------------------------------------------------
 
 
 @dataclass
-class BatteryTypeLcaParams:
-    """LCA parameters stored on ``BatteryType.lca_params``.
+class BatteryTypeLCAParams:
+    """LCA parameters stored on ``BatteryType.lca_parameters``.
 
     :ivar emission_factors_per_kg: Prod+EoL emissions per kg of battery pack.
     :ivar battery_lifetime_years: Battery lifetime for LCA amortisation (default 8).
@@ -311,11 +311,11 @@ class BatteryTypeLcaParams:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> BatteryTypeLcaParams:
+    def from_dict(cls, data: dict[str, Any]) -> BatteryTypeLCAParams:
         """Deserialize from a JSONB dict.
 
         :param data: The raw dictionary from the JSONB column.
-        :returns: A populated ``BatteryTypeLcaParams``.
+        :returns: A populated ``BatteryTypeLCAParams``.
         """
         return cls(
             emission_factors_per_kg=DefaultImpactVector.from_dict(
@@ -343,13 +343,13 @@ class BatteryTypeLcaParams:
 
 
 # ---------------------------------------------------------------------------
-# ChargingPointTypeLcaParams
+# ChargingPointTypeLCAParams
 # ---------------------------------------------------------------------------
 
 
 @dataclass
-class ChargingPointTypeLcaParams:
-    """LCA parameters stored on ``ChargingPointType.lca_params``.
+class ChargingPointTypeLCAParams:
+    """LCA parameters stored on ``ChargingPointType.lca_parameters``.
 
     :ivar control_unit_emissions: Per-unit emissions for one control unit.
     :ivar power_unit_emission: Per-unit emissions for one power unit at its
@@ -395,11 +395,11 @@ class ChargingPointTypeLcaParams:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ChargingPointTypeLcaParams:
+    def from_dict(cls, data: dict[str, Any]) -> ChargingPointTypeLCAParams:
         """Deserialize from a JSONB dict.
 
         :param data: The raw dictionary from the JSONB column.
-        :returns: A populated ``ChargingPointTypeLcaParams``.
+        :returns: A populated ``ChargingPointTypeLCAParams``.
         """
         return cls(
             control_unit_emissions=DefaultImpactVector.from_dict(
@@ -426,7 +426,7 @@ class ChargingPointTypeLcaParams:
         )
 
 
-class LcaScope(Enum):
+class LCAScope(Enum):
 
     PRODUCTION_AND_EOL = auto()
     USE_PHASE = auto()
@@ -441,7 +441,7 @@ class ItemType(Enum):
 
 
 @dataclass
-class LcaItem:
+class LCAItem:
     """One normalised emission contribution in an LCA result.
 
     :ivar name: ``VehicleType.name_short`` for vehicle/battery/energy/
@@ -455,17 +455,17 @@ class LcaItem:
 
     name: str
     type: ItemType
-    scope: LcaScope
+    scope: LCAScope
     emission_vector: DefaultImpactVector
 
 
 # ---------------------------------------------------------------------------
-# LcaResult
+# LCAResult
 # ---------------------------------------------------------------------------
 
 
 @dataclass
-class LcaResult:
+class LCAResult:
     """Output of :func:`eflips.lca.calculate_lca`.
 
     :ivar items: Annual fleet emission items (not normalised).  Sum any subset
@@ -477,7 +477,7 @@ class LcaResult:
         ``VehicleType.name_short``.
     """
 
-    items: list[LcaItem] = field(default_factory=list)
+    items: list[LCAItem] = field(default_factory=list)
     revenue_km: dict[str, float] = field(default_factory=dict)
     vehicle_km: dict[str, float] = field(default_factory=dict)
 
@@ -499,16 +499,16 @@ class LcaResult:
         return total / total_rkm
 
     @property
-    def emissions_by_scope(self) -> dict[LcaScope, DefaultImpactVector]:
+    def emissions_by_scope(self) -> dict[LCAScope, DefaultImpactVector]:
         """Emissions per revenue-km grouped by lifecycle scope.
 
-        All ``LcaScope`` members are present as keys (zero vector if no items
+        All ``LCAScope`` members are present as keys (zero vector if no items
         for that scope).  Returns zero vectors if revenue-km is zero.
 
-        :returns: Mapping from ``LcaScope`` to per-revenue-km emissions.
+        :returns: Mapping from ``LCAScope`` to per-revenue-km emissions.
         """
         total_rkm = sum(self.revenue_km.values())
-        accumulated = {scope: DefaultImpactVector.zero() for scope in LcaScope}
+        accumulated = {scope: DefaultImpactVector.zero() for scope in LCAScope}
         for item in self.items:
             accumulated[item.scope] = accumulated[item.scope] + item.emission_vector
         if total_rkm <= 0:
@@ -539,9 +539,9 @@ class LcaResult:
         """
         import matplotlib.pyplot as plt
 
-        color_map: dict[LcaScope, str] = {
-            LcaScope.PRODUCTION_AND_EOL: "lightblue",
-            LcaScope.USE_PHASE: "lightgreen",
+        color_map: dict[LCAScope, str] = {
+            LCAScope.PRODUCTION_AND_EOL: "lightblue",
+            LCAScope.USE_PHASE: "lightgreen",
         }
 
         by_scope = self.emissions_by_scope

@@ -65,11 +65,11 @@ def db_engine(tmp_path: Path):  # type: ignore[type-arg]
         conn.execute(
             text("UPDATE \"VehicleType\" SET energy_source = 'BATTERY_ELECTRIC'")
         )
-        conn.execute(text("ALTER TABLE VehicleType ADD COLUMN lca_params JSON"))
-        conn.execute(text("ALTER TABLE BatteryType ADD COLUMN lca_params JSON"))
-        conn.execute(text("ALTER TABLE ChargingPointType ADD COLUMN lca_params JSON"))
+        conn.execute(text("ALTER TABLE VehicleType ADD COLUMN lca_parameters JSON"))
+        conn.execute(text("ALTER TABLE BatteryType ADD COLUMN lca_parameters JSON"))
+        conn.execute(text("ALTER TABLE ChargingPointType ADD COLUMN lca_parameters JSON"))
 
-    command.stamp(_make_alembic_cfg(engine), "head")
+    command.stamp(_make_alembic_cfg(engine), "heads")
     try:
         yield engine
     finally:

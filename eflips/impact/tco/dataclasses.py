@@ -9,7 +9,7 @@ from eflips.impact.tco.cost_items import CapexItemType, OpexItemType
 
 
 @dataclass
-class VehicleTypeTCOParameter:
+class VehicleTypeTCOParams:
     """TCO parameters for a vehicle type."""
 
     name_short: str
@@ -41,7 +41,7 @@ class VehicleTypeTCOParameter:
         return d
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "VehicleTypeTCOParameter":
+    def from_dict(cls, d: Dict[str, Any]) -> "VehicleTypeTCOParams":
         return cls(
             name_short=d["name_short"],
             useful_life=int(d["useful_life"]),
@@ -54,7 +54,7 @@ class VehicleTypeTCOParameter:
 
 
 @dataclass
-class BatteryTypeTCOParameter:
+class BatteryTypeTCOParams:
     """TCO parameters for a battery type.
 
     Used to write ``BatteryType.tco_parameters`` on rows that already exist in
@@ -76,7 +76,7 @@ class BatteryTypeTCOParameter:
         }
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "BatteryTypeTCOParameter":
+    def from_dict(cls, d: Dict[str, Any]) -> "BatteryTypeTCOParams":
         return cls(
             vehicle_name_short=d["vehicle_name_short"],
             procurement_cost=float(d["procurement_cost"]),
@@ -86,7 +86,7 @@ class BatteryTypeTCOParameter:
 
 
 @dataclass
-class ChargingPointTypeTCOParameter:
+class ChargingPointTypeTCOParams:
     """TCO parameters for a charging point type.
 
     Used to write ``ChargingPointType.tco_parameters`` on rows that already
@@ -108,7 +108,7 @@ class ChargingPointTypeTCOParameter:
         }
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "ChargingPointTypeTCOParameter":
+    def from_dict(cls, d: Dict[str, Any]) -> "ChargingPointTypeTCOParams":
         return cls(
             type=d["type"],
             procurement_cost=float(d["procurement_cost"]),
@@ -118,7 +118,7 @@ class ChargingPointTypeTCOParameter:
 
 
 @dataclass
-class ChargingInfrastructureTCOParameter:
+class ChargingInfrastructureTCOParams:
     """TCO parameters for charging infrastructure."""
 
     type: str
@@ -134,7 +134,7 @@ class ChargingInfrastructureTCOParameter:
         }
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "ChargingInfrastructureTCOParameter":
+    def from_dict(cls, d: Dict[str, Any]) -> "ChargingInfrastructureTCOParams":
         return cls(
             type=d["type"],
             procurement_cost=float(d["procurement_cost"]),
@@ -144,7 +144,7 @@ class ChargingInfrastructureTCOParameter:
 
 
 @dataclass
-class ScenarioTCOParameter:
+class ScenarioTCOParams:
     """TCO parameters for a scenario.
 
     Format follows eflips-opt transition planning convention.
@@ -185,7 +185,7 @@ class ScenarioTCOParameter:
         return {k: v for k, v in d.items() if v is not None}
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "ScenarioTCOParameter":
+    def from_dict(cls, d: Dict[str, Any]) -> "ScenarioTCOParams":
         return cls(**d)
 
 
@@ -315,7 +315,7 @@ class TCOResult:
 
 
 @dataclass
-class TcoParamSet:
+class TCOParamSet:
     """All TCO parameters for a scenario, loadable from a JSON file.
 
     Bundles the five parameter lists consumed by :func:`init_tco_parameters`.
@@ -329,48 +329,48 @@ class TcoParamSet:
     :ivar charging_infrastructure: Per-charging-infrastructure parameters.
     """
 
-    scenario: ScenarioTCOParameter
-    vehicle_types: List[VehicleTypeTCOParameter]
-    battery_types: List[BatteryTypeTCOParameter]
-    charging_point_types: List[ChargingPointTypeTCOParameter]
-    charging_infrastructure: List[ChargingInfrastructureTCOParameter]
+    scenario: ScenarioTCOParams
+    vehicle_types: List[VehicleTypeTCOParams]
+    battery_types: List[BatteryTypeTCOParams]
+    charging_point_types: List[ChargingPointTypeTCOParams]
+    charging_infrastructure: List[ChargingInfrastructureTCOParams]
 
     @classmethod
-    def from_json(cls, path: Union[str, Path]) -> "TcoParamSet":
-        """Load a ``TcoParamSet`` from a JSON file.
+    def from_json(cls, path: Union[str, Path]) -> "TCOParamSet":
+        """Load a ``TCOParamSet`` from a JSON file.
 
         :param path: Path to the JSON file.
-        :returns: A ``TcoParamSet`` instance.
+        :returns: A ``TCOParamSet`` instance.
         """
         with open(path, "r", encoding="utf-8") as f:
             raw = json.load(f)
         return cls._from_raw(raw)
 
     @classmethod
-    def _from_raw(cls, raw: Dict[str, Any]) -> "TcoParamSet":
-        """Construct a ``TcoParamSet`` from a parsed JSON dict.
+    def _from_raw(cls, raw: Dict[str, Any]) -> "TCOParamSet":
+        """Construct a ``TCOParamSet`` from a parsed JSON dict.
 
         :param raw: Dict with keys ``scenario``, ``vehicle_types``,
             ``battery_types``, ``charging_point_types``,
             ``charging_infrastructure``.
-        :returns: A ``TcoParamSet`` instance.
+        :returns: A ``TCOParamSet`` instance.
         """
         return cls(
-            scenario=ScenarioTCOParameter.from_dict(raw["scenario"]),
+            scenario=ScenarioTCOParams.from_dict(raw["scenario"]),
             vehicle_types=[
-                VehicleTypeTCOParameter.from_dict(d)
+                VehicleTypeTCOParams.from_dict(d)
                 for d in raw.get("vehicle_types", [])
             ],
             battery_types=[
-                BatteryTypeTCOParameter.from_dict(d)
+                BatteryTypeTCOParams.from_dict(d)
                 for d in raw.get("battery_types", [])
             ],
             charging_point_types=[
-                ChargingPointTypeTCOParameter.from_dict(d)
+                ChargingPointTypeTCOParams.from_dict(d)
                 for d in raw.get("charging_point_types", [])
             ],
             charging_infrastructure=[
-                ChargingInfrastructureTCOParameter.from_dict(d)
+                ChargingInfrastructureTCOParams.from_dict(d)
                 for d in raw.get("charging_infrastructure", [])
             ],
         )
