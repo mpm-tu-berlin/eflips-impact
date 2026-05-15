@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import date, datetime, time, timedelta
+from datetime import datetime
 from typing import Optional
 
 import sqlalchemy
@@ -75,65 +75,6 @@ class StationSimData:
 # Annual-scaling helpers
 # ---------------------------------------------------------------------------
 
-
-def _simulation_start_and_end(
-    session: Session,
-    scenario_id: int,
-) -> tuple[datetime, datetime]:
-    """Determine the full-day simulation window from Trip data.
-
-    Queries ``min(Trip.departure_time)`` and ``max(Trip.arrival_time)`` for
-    the scenario, then trims to whole calendar days to avoid partial-day
-    bias in annualisation:
-
-    - *start_time*: ``00:00:00`` of the first calendar day whose midnight
-      start is at or after the earliest departure time.
-    - *end_time*: ``23:59:59`` of the last calendar day that is fully
-      enclosed within the simulation period, i.e. the day before the
-      calendar date of ``max(Trip.arrival_time)``.
-
-    The formula for the last full day D is ``overall_end.date() - 1 day``,
-    which holds in all cases:
-
-    - ``overall_end = Jan 21 00:00`` → D = Jan 20 ✓
-    - ``overall_end = Jan 20 22:00`` → D = Jan 19 ✓  (Jan 20 not fully covered)
-
-    :param session: SQLAlchemy session.
-    :param scenario_id: Scenario to query.
-    :returns: Pair ``(start_time, end_time)`` with ``start_time < end_time``.
-    :raises ValueError: If the scenario contains no trips, or if the trip span
-        covers fewer than two calendar days (no full day enclosed).
-    """
-    row = session.execute(
-        select(func.min(Trip.departure_time), func.max(Trip.arrival_time)).where(
-            Trip.scenario_id == scenario_id
-        )
-    ).one()
-
-    overall_start: Optional[datetime] = row[0]
-    overall_end: Optional[datetime] = row[1]
-
-    if overall_start is None or overall_end is None:
-        raise ValueError(f"Scenario {scenario_id} contains no trips.")
-
-    tz = overall_start.tzinfo
-
-    first_day: date = overall_start.date()
-    if overall_start != datetime.combine(first_day, time(0, 0, 0), tzinfo=tz):
-        first_day = first_day + timedelta(days=1)
-
-    last_day: date = overall_end.date() - timedelta(days=1)
-
-    start_dt = datetime.combine(first_day, time(0, 0, 0), tzinfo=tz)
-    end_dt = datetime.combine(last_day, time(23, 59, 59), tzinfo=tz)
-
-    if end_dt <= start_dt:
-        raise ValueError(
-            f"Simulation window for scenario {scenario_id} contains no full calendar "
-            f"days (overall_start={overall_start}, overall_end={overall_end}) with end_dt={end_dt} and start_dt={start_dt}."
-        )
-
-    return start_dt, end_dt
 
 
 def _annual_scaling_factor(scaling_window: tuple[datetime, datetime]) -> float:
