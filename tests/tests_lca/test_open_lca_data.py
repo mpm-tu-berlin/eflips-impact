@@ -23,7 +23,7 @@ from eflips.impact.lca.open_lca_data import (
 )
 from eflips.impact.lca.util import DefaultImpactVector
 
-DEFAULTS_DIR = Path(__file__).parent / "data"
+DEFAULTS_DIR = Path(__file__).parent.parent / "data"
 
 # ===================================================================
 # Helpers
@@ -193,7 +193,7 @@ class TestOpenLCADataRoundtrip:
 class TestFromJsonLca:
     """Tests for ``OpenLCAData.from_json_lca``."""
 
-    LCA_JSON = Path(__file__).parent / "data" / "lca.json"
+    LCA_JSON = Path(__file__).parent.parent / "data" / "lca.json"
 
     def test_loads_without_error(self) -> None:
         """File parses and constructs an OpenLCAData."""

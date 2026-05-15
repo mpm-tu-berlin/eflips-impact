@@ -30,7 +30,7 @@ from tests.tests_tco.conftest import (
     VEHICLE_TYPE_TCO_PARAMS,
 )
 
-DEFAULTS_JSON = Path(__file__).parent / "data" / "tco.json"
+DEFAULTS_JSON = Path(__file__).parent.parent / "data" / "tco.json"
 
 
 # ---------------------------------------------------------------------------

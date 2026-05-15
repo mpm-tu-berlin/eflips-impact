@@ -1,7 +1,8 @@
 [project]
 name = "eflips-impact"
 version = "1.0.0"
-description = ""
+description = "TCO and LCA analysis for eFLIPS"
+license = {text = "AGPL-3.0-or-later"}
 authors = [
     {name = "Shuyao Guo",email = "shuyao.guo@tu-berlin.de"},
     {name = "Ludger Heide", email = "ludger.heide@tu-berlin.de"},
@@ -30,6 +31,7 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["tests", "."]
 
 
 
