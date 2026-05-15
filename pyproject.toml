@@ -1,16 +1,19 @@
 [project]
 name = "eflips-impact"
-version = "0.1.0"
+version = "1.0.0"
 description = ""
 authors = [
-    {name = "Shuyao Guo",email = "shuyao.guo@tu-berlin.de"}
+    {name = "Shuyao Guo",email = "shuyao.guo@tu-berlin.de"},
+    {name = "Ludger Heide", email = "ludger.heide@tu-berlin.de"},
+    {name = "Julian Dubiel", email = "julian.dubiel@gmx.de"},
+    {name = "Anne Syré", email = "a.syre@tu-berlin.de"}
 ]
 readme = "README.md"
 requires-python = ">=3.10, <3.14"
 dependencies = [
-    "eflips-model @ git+https://github.com/mpm-tu-berlin/eflips-model.git@feature/eflips-lca",
     "eflips-eval (>=1.9.0,<2.0.0)",
-    "pytest (>=9.0.3,<10.0.0)"
+    "pytest (>=9.0.3,<10.0.0)",
+    "eflips-model (>=11.1.0,<12.0.0)"
 ]
 
 [dependency-groups]
@@ -33,6 +36,12 @@ testpaths = ["tests"]
 [tool.poetry.group.dev.dependencies]
 sphinx = ">=6.2.1,<9"
 sphinx-autoapi = "^3.8.0"
+
+
+[tool.poetry]
+packages = [{ include = "eflips/impact" }]
+
+
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
