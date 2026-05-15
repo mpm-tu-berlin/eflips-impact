@@ -130,7 +130,7 @@ def _simulation_start_and_end(
     if end_dt <= start_dt:
         raise ValueError(
             f"Simulation window for scenario {scenario_id} contains no full calendar "
-            f"days (overall_start={overall_start}, overall_end={overall_end})."
+            f"days (overall_start={overall_start}, overall_end={overall_end}) with end_dt={end_dt} and start_dt={start_dt}."
         )
 
     return start_dt, end_dt
