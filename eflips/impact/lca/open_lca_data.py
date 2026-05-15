@@ -485,14 +485,6 @@ class OpenLCAData:
 
         row_gwp = _row("GWP100")  # climate change – global warming potential
         row_pm = _row("PMFP")  # particulate matter formation
-        # TODO: Two photochemical oxidant formation sub-categories are present
-        #   in bus_results.json:
-        #     EOFP – "photochemical oxidant formation: terrestrial ecosystems"
-        #     HOFP – "photochemical oxidant formation: human health"
-        #   Currently using the human-health variant (HOFP) for the `pocp`
-        #   field of DefaultImpactVector.  Evaluate whether the terrestrial-
-        #   ecosystems variant (EOFP) would be more representative for
-        #   transport-sector LCA.
         row_pocp = _row("HOFP")  # photochemical oxidant formation: human health
         row_ap = _row("TAP")  # acidification: terrestrial
         row_ep_freshwater = _row("FEP")  # eutrophication: freshwater
@@ -788,7 +780,7 @@ def populate_lca_parameters_from_data(
         vtype.lca_parameters = params.to_dict()
 
     # --- BatteryTypes ---
-    # Row creation is the responsibility of eflips.impact.utils.init_fleet
+    # Row creation is the responsibility of eflips.impact.utils.complete_fleet
     # (driven by fleet.json). This function only writes lca_parameters on rows
     # that already exist.
     battery_types = (
@@ -800,7 +792,7 @@ def populate_lca_parameters_from_data(
         ).to_dict()
 
     # --- ChargingPointTypes ---
-    # Row creation is the responsibility of eflips.impact.utils.init_fleet
+    # Row creation is the responsibility of eflips.impact.utils.complete_fleet
     # (driven by fleet.json). This function only writes lca_parameters on rows
     # that already exist.
     charging_point_types = (
@@ -819,7 +811,7 @@ def populate_lca_parameters_from_data(
     session.flush()
 
 
-def init_lca_parameters(
+def init_lca_params(
     scenario: Union[Scenario, int, Any],
     lca_json_path: str | Path,
     overrides_json_path: str | Path,

@@ -83,10 +83,10 @@ Scenario-specific parameters are supplied through four JSON files. Example files
 
 | File | Purpose |
 |---|---|
-| `fleet.json` | Defines battery types and charging point types; assigns them to vehicle types, depot areas, and opportunity charging stations. |
-| `tco.json` | Provides TCO parameters: procurement costs, useful life, energy prices, staff costs, maintenance rates, and financial assumptions. See the *TCO Parameter Reference* (planned) for a full field description. |
-| `lca.json` | Raw openLCA matrix export used as the LCA background data source. |
-| `lca_overrides.json` | Per-vehicle-type overrides for LCA inputs (motor power, energy consumption) and the analysis year. See the *LCA Parameter Reference* (planned) for a full field description. |
+| `fleet.json` | Defines battery types (chemistry, specific mass) and charging point types; assigns them to vehicle types, depot areas, and opportunity charging stations. Read by `complete_fleet()`, which must be called before `init_tco_params()` and `init_lca_params()`. |
+| `tco.json` | Provides TCO parameters: procurement costs, useful life, energy prices, staff costs, maintenance rates, financial assumptions, and fleet availability factor (`eta_avail`). See [TCO.md](TCO.md) for a full field description. |
+| `lca.json` | Raw openLCA matrix export used as the LCA background data source. See [LCA.md](LCA.md) for a full field description. |
+| `lca_overrides.json` | Per-vehicle-type overrides for LCA inputs (motor power, energy consumption) and the analysis year. See [LCA.md](LCA.md) for a full field description. |
 
 Copy and adapt the example files to your scenario. The matching between JSON entries and database rows uses string keys (`name_short` for vehicle types, `type` for charging infrastructure) — never database-assigned integer IDs.
 
@@ -98,14 +98,14 @@ Copy and adapt the example files to your scenario. The matching between JSON ent
 eFLIPS simulation DB
         │
         ▼
-  init_fleet()                        ← fleet.json
+  complete_fleet()                        ← fleet.json
   (creates BatteryType /
    ChargingPointType rows)
         │
         ├─────────────────────────────────────────┐
         │                                         │
         ▼                                         ▼
-  init_tco_params()  ← tco.json     init_lca_parameters()  ← lca.json
+  init_tco_params()  ← tco.json     init_lca_params()  ← lca.json
   (writes tco_parameters                (writes lca_parameters          + lca_overrides.json
    to DB entities)                       to DB entities)
         │                                         │
@@ -116,30 +116,31 @@ eFLIPS simulation DB
    TCOResult                              LCAResult
 ```
 
-`init_fleet()` must be called once before the parameter-init functions. The two parameter-init steps (`init_tco_params`, `init_lca_parameters`) and the two calculation steps are independent and can be run separately.
+`complete_fleet()` must be called once before the parameter-init functions. The two parameter-init steps (`init_tco_params`, `init_lca_params`) and the two calculation steps are independent and can be run separately.
 
 ### Public API
 
 ```python
-from eflips.impact.utils import init_fleet
+from eflips.impact.utils import complete_fleet
 from eflips.impact.tco import init_tco_params, calculate_tco
-from eflips.impact.lca import init_lca_parameters, calculate_lca
+from eflips.impact.lca import init_lca_params, calculate_lca
 
 # 1. Fleet topology
-init_fleet(scenario=1, filepath="fleet.json", delete_existing_data=True, database_url=DATABASE_URL)
+complete_fleet(scenario=1, filepath="fleet.json", delete_existing_data=True, database_url=DATABASE_URL)
 
 # 2a. TCO parameters
 init_tco_params(scenario=1, json_path="tco.json", database_url=DATABASE_URL)
 
 # 2b. LCA parameters
-init_lca_parameters(scenario=1, lca_json_path="lca.json", overrides_json_path="lca_overrides.json", database_url=DATABASE_URL)
+init_lca_params(scenario=1, lca_json_path="lca.json", overrides_json_path="lca_overrides.json",
+                database_url=DATABASE_URL)
 
 # 3. Calculate
 tco_result = calculate_tco(scenario=1, database_url=DATABASE_URL)
 lca_result = calculate_lca(scenario=1, database_url=DATABASE_URL)
 
 # 4. Results
-print(tco_result.tco_per_revenue_km)   # EUR / revenue-km
+print(tco_result.tco_per_revenue_km)  # EUR / revenue-km
 print(lca_result.total_per_revenue_km.gwp)  # kg CO₂-eq / revenue-km
 
 # 5. Plots

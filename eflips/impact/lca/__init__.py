@@ -27,7 +27,7 @@ from eflips.impact.lca.open_lca_data import (
     OpenLCAData,
     VehicleTypeOverrides,
     YearSeries,
-    init_lca_parameters,
+    init_lca_params,
     populate_lca_parameters_from_data,
 )
 from eflips.impact.lca.util import DefaultImpactVector, ImpactVector
@@ -52,6 +52,6 @@ __all__ = [
     "YearSeries",
     "VehicleTypeOverrides",
     "ChargingPointTypeOverrides",
-    "init_lca_parameters",
+    "init_lca_params",
     "populate_lca_parameters_from_data",
 ]

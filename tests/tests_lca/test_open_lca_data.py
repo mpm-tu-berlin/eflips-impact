@@ -18,7 +18,7 @@ from eflips.impact.lca.open_lca_data import (
     OpenLCAData,
     VehicleTypeOverrides,
     YearSeries,
-    init_lca_parameters,
+    init_lca_params,
     populate_lca_parameters_from_data,
 )
 from eflips.impact.lca.util import DefaultImpactVector
@@ -437,12 +437,12 @@ class TestPopulationLogic:
 
 
 class TestInitLCAParams:
-    """Tests for ``init_lca_parameters``."""
+    """Tests for ``init_lca_params``."""
 
     def test_writes_all_entity_lca_parameters(
         self, db_session: pytest.fixture  # type: ignore[type-arg]
     ) -> None:
-        """init_lca_parameters writes lca_parameters to VehicleType, BatteryType, and CPT."""
+        """init_lca_params writes lca_parameters to VehicleType, BatteryType, and CPT."""
         from eflips.model import BatteryType, ChargingPointType, VehicleType
 
         from tests.tests_lca.conftest import SCENARIO_ID
@@ -453,7 +453,7 @@ class TestInitLCAParams:
             .one()
         )
 
-        init_lca_parameters(
+        init_lca_params(
             scenario=scenario,
             lca_json_path=DEFAULTS_DIR / "lca.json",
             overrides_json_path=DEFAULTS_DIR / "lca_overrides.json",
@@ -478,7 +478,7 @@ class TestInitLCAParams:
     def test_vehicle_type_override_values_applied(
         self, db_session: pytest.fixture  # type: ignore[type-arg]
     ) -> None:
-        """init_lca_parameters writes the correct consumption from lca_overrides.json."""
+        """init_lca_params writes the correct consumption from lca_overrides.json."""
         from eflips.model import VehicleType
 
         from tests.tests_lca.conftest import SCENARIO_ID
@@ -489,7 +489,7 @@ class TestInitLCAParams:
             .one()
         )
 
-        init_lca_parameters(
+        init_lca_params(
             scenario=scenario,
             lca_json_path=DEFAULTS_DIR / "lca.json",
             overrides_json_path=DEFAULTS_DIR / "lca_overrides.json",
@@ -506,7 +506,7 @@ class TestInitLCAParams:
     def test_cpt_overrides_infrastructure_lifetime(
         self, db_session: pytest.fixture  # type: ignore[type-arg]
     ) -> None:
-        """init_lca_parameters applies infrastructure_lifetime_years from opportunity overrides."""
+        """init_lca_params applies infrastructure_lifetime_years from opportunity overrides."""
         from eflips.model import ChargingPointType
 
         from tests.tests_lca.conftest import SCENARIO_ID
@@ -517,7 +517,7 @@ class TestInitLCAParams:
             .one()
         )
 
-        init_lca_parameters(
+        init_lca_params(
             scenario=scenario,
             lca_json_path=DEFAULTS_DIR / "lca.json",
             overrides_json_path=DEFAULTS_DIR / "lca_overrides.json",
@@ -535,7 +535,7 @@ class TestInitLCAParams:
     def test_missing_beb_override_warns_and_returns(
         self, db_session: pytest.fixture, tmp_path: Path  # type: ignore[type-arg]
     ) -> None:
-        """init_lca_parameters warns and returns None if a BEB VehicleType lacks overrides."""
+        """init_lca_params warns and returns None if a BEB VehicleType lacks overrides."""
         import json
 
         from tests.tests_lca.conftest import SCENARIO_ID
@@ -568,7 +568,7 @@ class TestInitLCAParams:
 
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            result = init_lca_parameters(
+            result = init_lca_params(
                 scenario=scenario,
                 lca_json_path=DEFAULTS_DIR / "lca.json",
                 overrides_json_path=overrides_path,

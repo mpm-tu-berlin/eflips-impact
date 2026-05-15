@@ -1,7 +1,7 @@
 """Example script: full LCA pipeline.
 
 Pipeline:
-1. Load ``lca.json`` into ``OpenLcaData``.
+1. Load ``lca.json`` into ``OpenLCAData``.
 2. Populate ``lca_params`` on all DB entities via ``init_lca_params``
    (reads ``lca_overrides.json`` for per-vehicle overrides and CPT
    infrastructure parameters).
@@ -12,8 +12,7 @@ Usage::
 
     python bin/example_lca.py
 
-The DATABASE_URL environment variable is optional; the URL is hard-coded
-below for convenience during development.
+Set DATABASE_URL below or via the environment variable before running.
 """
 
 from __future__ import annotations
@@ -21,14 +20,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from eflips.impact.lca import calculate_lca, init_lca_params
-from eflips.impact.utils import init_fleet
+from eflips.impact.utils import complete_fleet
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
-# TODO delete this before release
-DATABASE_URL = "sqlite:////home/shuyao/PycharmProjects/eflips-data/Simulation_term.db"
+
+DATABASE_URL = "your_database_url_here"  # e.g. "sqlite:////path/to/your/database.db"
 SCENARIO_ID = 1
 
 # Path to the bundled example preset files.
@@ -40,8 +39,9 @@ LCA_OVERRIDES_JSON = _DEFAULTS / "lca_overrides.json"
 # ---------------------------------------------------------------------------
 # Step 1: Init fleet
 # ---------------------------------------------------------------------------
-print("Step 1: Init fleet ...")
-init_fleet(
+print("Step 1: Add BatteryType and ChargingPointType data if they are not in the database. "
+      "Skip this step if these information are already in the database.\n")
+complete_fleet(
     scenario=SCENARIO_ID,
     filepath=_DEFAULTS / "fleet.json",
     delete_existing_data=True,
@@ -52,6 +52,8 @@ init_fleet(
 # ---------------------------------------------------------------------------
 # Step 2: populate lca_params via init_lca_params
 # ---------------------------------------------------------------------------
+print("Step 2: running init_lca_params. This will read lca.json and lca_overrides.json, "
+      "and write the resulting lca_parameters to the database. Skip this step if lca_parameters are already in the database.\n")
 init_lca_params(
     scenario=SCENARIO_ID,
     lca_json_path=LCA_JSON,

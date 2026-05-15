@@ -28,7 +28,7 @@ from eflips.impact.utils.extraction import (
     get_extraction_window,
     get_scaling_window,
 )
-from eflips.impact.utils.fleet_init import init_fleet
+from eflips.impact.utils.fleet_init import complete_fleet
 from eflips.impact.utils.session import create_session
 
 __all__ = [
@@ -46,5 +46,5 @@ __all__ = [
     "extract_vehicle_count_per_type",
     "get_extraction_window",
     "get_scaling_window",
-    "init_fleet",
+    "complete_fleet",
 ]

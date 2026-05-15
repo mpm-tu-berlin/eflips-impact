@@ -61,7 +61,7 @@ All annual fleet emissions are summed, then divided by total annual revenue-km a
 |---|---|---|
 | `gwp` | kg CO₂-eq | Global warming potential (GWP100) |
 | `pm` | kg PM2.5-eq | Particulate matter formation (PMFP) |
-| `pocp` | kg NOx-eq | Photochemical ozone creation (HOFP) |
+| `pocp` | kg NOx-eq | Photochemical ozone creation — human health (HOFP). The human health sub-category is reported following common practice in academic research. |
 | `ap` | kg SO₂-eq | Acidification potential (TAP) |
 | `ep_freshwater` | kg P-eq | Freshwater eutrophication (FEP) |
 | `ep_marine` | kg N-eq | Marine eutrophication (MEP) |

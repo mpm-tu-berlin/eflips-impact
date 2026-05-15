@@ -59,7 +59,7 @@ class BatteryTypeTCOParams:
 
     Used to write ``BatteryType.tco_parameters`` on rows that already exist in
     the database. BatteryType row creation has moved to
-    :func:`eflips.impact.utils.fleet_init.init_fleet`; ``specific_mass`` and
+    :func:`eflips.impact.utils.fleet_init.complete_fleet`; ``specific_mass`` and
     ``chemistry`` are no longer fields here.
     """
 
@@ -91,7 +91,7 @@ class ChargingPointTypeTCOParams:
 
     Used to write ``ChargingPointType.tco_parameters`` on rows that already
     exist in the database. ChargingPointType row creation has moved to
-    :func:`eflips.impact.utils.fleet_init.init_fleet`; ``name`` is no longer
+    :func:`eflips.impact.utils.fleet_init.complete_fleet`; ``name`` is no longer
     a field here.
     """
 

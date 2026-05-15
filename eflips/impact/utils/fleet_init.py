@@ -65,7 +65,7 @@ class _FleetConfig:
     charging_point_types: List[_ChargingPointEntry]
 
 
-def init_fleet(
+def complete_fleet(
     scenario: Union[Scenario, int, Any],
     filepath: Path,
     delete_existing_data: bool,
@@ -101,7 +101,7 @@ def init_fleet(
         or ``lca_parameters`` JSONB content on VehicleType / Area / Station rows
         becomes stale (it referenced the deleted rows). The caller is
         responsible for re-running the relevant ``init_*`` / ``populate_*``
-        functions afterwards. ``init_fleet`` does not auto-clear or warn
+        functions afterwards. ``complete_fleet`` does not auto-clear or warn
         about stale params.
     """
     config = _load_fleet_config(filepath)

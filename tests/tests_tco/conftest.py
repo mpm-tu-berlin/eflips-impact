@@ -29,7 +29,7 @@ from eflips.model import (
     Area,
     VehicleType,
 )
-from eflips.impact.utils import init_fleet
+from eflips.impact.utils import complete_fleet
 
 DATA_DIR = Path(__file__).parent.parent / "tests_lca" / "data"
 SCENARIO_ID = 1
@@ -225,7 +225,7 @@ def scenario(db_session: Session) -> Scenario:
 
 @pytest.fixture
 def fleet_session(db_session: Session, scenario: Scenario, tmp_path: Path) -> Session:
-    """Session with fleet topology initialised via :func:`init_fleet`.
+    """Session with fleet topology initialised via :func:`complete_fleet`.
 
     Creates one BatteryType per BEB VehicleType (EN, DD, GN) and two
     ChargingPointType rows (depot, opportunity), assigning them to the
@@ -233,7 +233,7 @@ def fleet_session(db_session: Session, scenario: Scenario, tmp_path: Path) -> Se
     """
     fleet_path = tmp_path / "fleet.json"
     fleet_path.write_text(json.dumps(_full_fleet_dict()), encoding="utf-8")
-    init_fleet(scenario, fleet_path, delete_existing_data=False)
+    complete_fleet(scenario, fleet_path, delete_existing_data=False)
     return db_session
 
 
