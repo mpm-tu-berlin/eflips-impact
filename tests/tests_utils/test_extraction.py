@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, time, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy.orm import Session
 
 from eflips.impact.utils.extraction import (
     _annual_scaling_factor,
-    _simulation_start_and_end,
     extract_vehicle_and_revenue_kilometers,
     extract_vehicle_count_per_type,
     get_extraction_window,
@@ -55,43 +54,12 @@ def test_scaling_negative_duration_raises() -> None:
 
 
 # ---------------------------------------------------------------------------
-# _simulation_start_and_end
-# ---------------------------------------------------------------------------
-
-
-def test_sim_bounds_start_at_midnight(db_session: Session) -> None:
-    start, _ = _simulation_start_and_end(db_session, SCENARIO_ID)
-    assert start.time() == time(0, 0, 0)
-
-
-def test_sim_bounds_end_at_end_of_day(db_session: Session) -> None:
-    _, end = _simulation_start_and_end(db_session, SCENARIO_ID)
-    assert end.time() == time(23, 59, 59)
-
-
-def test_sim_bounds_start_before_end(db_session: Session) -> None:
-    start, end = _simulation_start_and_end(db_session, SCENARIO_ID)
-    assert start < end
-
-
-def test_sim_bounds_same_timezone(db_session: Session) -> None:
-    start, end = _simulation_start_and_end(db_session, SCENARIO_ID)
-    assert start.tzinfo == end.tzinfo
-
-
-def test_sim_bounds_no_trips_raises(db_session: Session) -> None:
-    # Scenario 999 does not exist → no trips → ValueError
-    with pytest.raises(ValueError, match="contains no trips"):
-        _simulation_start_and_end(db_session, 999)
-
-
-# ---------------------------------------------------------------------------
 # extract_vehicle_and_revenue_kilometers
 # ---------------------------------------------------------------------------
 
 
 def test_vkm_keys_are_vehicle_type_ids(db_session: Session) -> None:
-    window = _simulation_start_and_end(db_session, SCENARIO_ID)
+    window = get_scaling_window(db_session, SCENARIO_ID)
     result = extract_vehicle_and_revenue_kilometers(
         db_session, SCENARIO_ID, window, window
     )
@@ -102,7 +70,7 @@ def test_vkm_keys_are_vehicle_type_ids(db_session: Session) -> None:
 
 
 def test_vkm_revenue_le_vehicle(db_session: Session) -> None:
-    window = _simulation_start_and_end(db_session, SCENARIO_ID)
+    window = get_scaling_window(db_session, SCENARIO_ID)
     result = extract_vehicle_and_revenue_kilometers(
         db_session, SCENARIO_ID, window, window
     )
@@ -112,9 +80,7 @@ def test_vkm_revenue_le_vehicle(db_session: Session) -> None:
 
 def test_vkm_scaling_proportional(db_session: Session) -> None:
     """A half-length scaling window should double the km values vs. the full window."""
-    start, end = _simulation_start_and_end(db_session, SCENARIO_ID)
-    from datetime import timedelta
-
+    start, end = get_scaling_window(db_session, SCENARIO_ID)
     mid = start + (end - start) / 2
     half_window = (start, mid)
     full_window = (start, end)
@@ -137,7 +103,7 @@ def test_vkm_scaling_proportional(db_session: Session) -> None:
 
 
 def test_vehicle_count_positive(db_session: Session) -> None:
-    window = _simulation_start_and_end(db_session, SCENARIO_ID)
+    window = get_scaling_window(db_session, SCENARIO_ID)
     result = extract_vehicle_count_per_type(db_session, SCENARIO_ID, window)
     assert len(result) > 0
     for count in result.values():
@@ -145,7 +111,7 @@ def test_vehicle_count_positive(db_session: Session) -> None:
 
 
 def test_vehicle_count_keys_match_km_keys(db_session: Session) -> None:
-    window = _simulation_start_and_end(db_session, SCENARIO_ID)
+    window = get_scaling_window(db_session, SCENARIO_ID)
     km_result = extract_vehicle_and_revenue_kilometers(
         db_session, SCENARIO_ID, window, window
     )

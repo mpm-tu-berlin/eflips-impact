@@ -23,7 +23,7 @@ from eflips.impact.lca.open_lca_data import (
 )
 from eflips.impact.lca.util import DefaultImpactVector
 
-DEFAULTS_DIR = Path(__file__).parent / "data"
+DEFAULTS_DIR = Path(__file__).parent.parent / "data"
 
 # ===================================================================
 # Helpers
@@ -193,7 +193,7 @@ class TestOpenLCADataRoundtrip:
 class TestFromJsonLca:
     """Tests for ``OpenLCAData.from_json_lca``."""
 
-    LCA_JSON = Path(__file__).parent / "data" / "lca.json"
+    LCA_JSON = Path(__file__).parent.parent / "data" / "lca.json"
 
     def test_loads_without_error(self) -> None:
         """File parses and constructs an OpenLCAData."""
@@ -501,7 +501,9 @@ class TestInitLCAParams:
             .filter_by(scenario_id=SCENARIO_ID, name_short="EN")
             .one()
         )
-        assert en.lca_parameters["average_consumption_kwh_per_km"] == pytest.approx(1.48)
+        assert en.lca_parameters["average_consumption_kwh_per_km"] == pytest.approx(
+            1.48
+        )
 
     def test_cpt_overrides_infrastructure_lifetime(
         self, db_session: pytest.fixture  # type: ignore[type-arg]
@@ -530,7 +532,9 @@ class TestInitLCAParams:
         )
         assert cpt is not None
         # lca_overrides.json sets infrastructure_lifetime_years: 20.0
-        assert cpt.lca_parameters["infrastructure_lifetime_years"] == pytest.approx(20.0)
+        assert cpt.lca_parameters["infrastructure_lifetime_years"] == pytest.approx(
+            20.0
+        )
 
     def test_missing_beb_override_warns_and_returns(
         self, db_session: pytest.fixture, tmp_path: Path  # type: ignore[type-arg]

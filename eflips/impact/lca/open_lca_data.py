@@ -806,7 +806,9 @@ def populate_lca_parameters_from_data(
         )
     for cpt in charging_point_types:
         assert cpt_overrides is not None  # guaranteed by check above
-        cpt.lca_parameters = d.make_charging_point_type_lca_parameters(cpt_overrides).to_dict()
+        cpt.lca_parameters = d.make_charging_point_type_lca_parameters(
+            cpt_overrides
+        ).to_dict()
 
     session.flush()
 

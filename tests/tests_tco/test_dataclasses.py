@@ -15,7 +15,7 @@ from eflips.impact.tco.dataclasses import (
     VehicleTypeTCOParams,
 )
 
-DEFAULTS_JSON = Path(__file__).parent / "data" / "tco.json"
+DEFAULTS_JSON = Path(__file__).parent.parent / "data" / "tco.json"
 
 
 # ---------------------------------------------------------------------------

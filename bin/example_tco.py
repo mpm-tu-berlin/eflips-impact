@@ -36,8 +36,10 @@ TCO_JSON = _DEFAULTS / "tco.json"
 # ---------------------------------------------------------------------------
 # Step 1: Init fleet
 # ---------------------------------------------------------------------------
-print("Step 1: Add BatteryType and ChargingPointType data if they are not in the database. "
-      "Skip this step if these information are already in the database.\n")
+print(
+    "Step 1: Add BatteryType and ChargingPointType data if they are not in the database. "
+    "Skip this step if these information are already in the database.\n"
+)
 complete_fleet(
     scenario=SCENARIO_ID,
     filepath=_DEFAULTS / "fleet.json",
@@ -49,8 +51,10 @@ print("  Fleet topology written to DB.\n")
 # ---------------------------------------------------------------------------
 # Step 2: Populate tco_parameters via init_tco_parameters_from_json
 # ---------------------------------------------------------------------------
-print("Step 2: running init_tco_params. This will read tco.json, "
-      "and write the resulting tco_parameters to the database. Skip this step if tco_parameters are already in the database.\n")
+print(
+    "Step 2: running init_tco_params. This will read tco.json, "
+    "and write the resulting tco_parameters to the database. Skip this step if tco_parameters are already in the database.\n"
+)
 init_tco_params(
     scenario=SCENARIO_ID,
     json_path=TCO_JSON,

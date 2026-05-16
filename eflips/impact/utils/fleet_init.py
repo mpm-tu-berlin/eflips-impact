@@ -35,7 +35,6 @@ from eflips.model import (
 )
 from eflips.impact.utils.session import create_session
 
-
 _ALLOWED_CHEMISTRIES = frozenset({"lfp", "nmc"})
 
 

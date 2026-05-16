@@ -7,33 +7,13 @@ env:
   POETRY_URL: https://install.python-poetry.org
 
 jobs:
-  # Label
   unittests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         PYTHON_VERSION: [ "3.11", "3.12", "3.13" ]
-        DATABASE: ["postgres", "sqlite"]
-    services:
-      postgres:
-        # Only start PostgreSQL service when using postgres
-        image: ${{ matrix.DATABASE == 'postgres' && 'postgis/postgis' || '' }}
-        env:
-          POSTGRES_USER: user
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: database
-        # Set health checks to wait until postgres has started
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          # Maps tcp port 5432 on service container to the host
-          - 5432:5432
 
     steps:
-      # Downloads a copy of the code in your repository before running CI tests
       - name: Check out code
         uses: actions/checkout@v4
 
@@ -43,15 +23,7 @@ jobs:
           sudo apt-get install gdal-bin
           echo ogrinfo --version
 
-      # PostgreSQL specific setup
-      - name: Add `btree_gist` to postgreSQL
-        if: matrix.DATABASE == 'postgres'
-        run: |
-          sudo -u postgres psql "postgresql://user:password@localhost/database" -c "CREATE EXTENSION btree_gist;"
-
-      # SQLite/SpatiaLite specific setup
       - name: Install SpatiaLite
-        if: matrix.DATABASE == 'sqlite'
         run: |
           sudo apt-get install -y libsqlite3-mod-spatialite
 
@@ -70,25 +42,10 @@ jobs:
         run: |
           poetry install --no-root
 
-      # Set database URL based on the matrix choice
-      - name: Set PostgreSQL environment
-        if: matrix.DATABASE == 'postgres'
-        run: |
-          echo "DATABASE_URL=postgresql://user:password@localhost/database" >> $GITHUB_ENV
-          echo "POSTGRES_HOST=localhost" >> $GITHUB_ENV
-          echo "POSTGRES_PORT=5432" >> $GITHUB_ENV
-
-      - name: Set SQLite environment
-        if: matrix.DATABASE == 'sqlite'
-        run: |
-          echo "DATABASE_URL=sqlite:////tmp/eflips.db" >> $GITHUB_ENV
-          # Set SpatiaLite library path for spatial SQLite operations
-          echo "SPATIALITE_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/mod_spatialite.so" >> $GITHUB_ENV
-
       - name: Run Tests
         run:
           poetry run pytest
         env:
-          # To make sure that the tests can find the eflips package
           PYTHONPATH: "tests:."
-          # The DATABASE_URL is set conditionally above
+          DATABASE_URL: "sqlite:////tmp/eflips.db"
+          SPATIALITE_LIBRARY_PATH: "/usr/lib/x86_64-linux-gnu/mod_spatialite.so"

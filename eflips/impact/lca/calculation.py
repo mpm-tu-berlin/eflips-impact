@@ -255,7 +255,8 @@ def calculate_vehicle_type_emissions(
             name=name,
             type=ItemType.VEHICLE,
             scope=LCAScope.PRODUCTION_AND_EOL,
-            emission_vector=amortize(e_chassis_total, params.vehicle_lifetime_years) * n_total,
+            emission_vector=amortize(e_chassis_total, params.vehicle_lifetime_years)
+            * n_total,
         )
     )
 
@@ -266,21 +267,30 @@ def calculate_vehicle_type_emissions(
             name=name,
             type=ItemType.VEHICLE,
             scope=LCAScope.PRODUCTION_AND_EOL,
-            emission_vector=amortize(e_motor_total, params.vehicle_lifetime_years) * n_total,
+            emission_vector=amortize(e_motor_total, params.vehicle_lifetime_years)
+            * n_total,
         )
     )
 
     # Battery (BEB only, prod+EoL, amortised over battery lifetime, fleet-scaled)
-    if vtype.energy_source == EnergySource.BATTERY_ELECTRIC and battery_type is not None:
+    if (
+        vtype.energy_source == EnergySource.BATTERY_ELECTRIC
+        and battery_type is not None
+    ):
         if battery_type.lca_parameters is None:
-            raise ValueError(f"BatteryType {battery_type.id} has no lca_parameters set.")
+            raise ValueError(
+                f"BatteryType {battery_type.id} has no lca_parameters set."
+            )
         bt_params = BatteryTypeLCAParams.from_dict(battery_type.lca_parameters)
         items.append(
             LCAItem(
                 name=name,
                 type=ItemType.BATTERY,
                 scope=LCAScope.PRODUCTION_AND_EOL,
-                emission_vector=amortize(e_battery_total, bt_params.battery_lifetime_years) * n_total,
+                emission_vector=amortize(
+                    e_battery_total, bt_params.battery_lifetime_years
+                )
+                * n_total,
             )
         )
 
@@ -413,7 +423,8 @@ def _get_cpt_params(entity: Any, entity_label: str) -> ChargingPointTypeLCAParam
         raise ValueError(f"{entity_label} has no charging_point_type assigned.")
     if cpt.lca_parameters is None:
         raise ValueError(
-            f"ChargingPointType {cpt.id} for {entity_label} has no " f"lca_parameters set."
+            f"ChargingPointType {cpt.id} for {entity_label} has no "
+            f"lca_parameters set."
         )
     return ChargingPointTypeLCAParams.from_dict(cpt.lca_parameters)
 

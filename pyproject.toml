@@ -1,7 +1,8 @@
 [project]
 name = "eflips-impact"
 version = "1.0.0"
-description = ""
+description = "TCO and LCA analysis for eFLIPS"
+license = {text = "AGPL-3.0-or-later"}
 authors = [
     {name = "Shuyao Guo",email = "shuyao.guo@tu-berlin.de"},
     {name = "Ludger Heide", email = "ludger.heide@tu-berlin.de"},
@@ -30,12 +31,14 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["tests", "."]
 
 
 
 [tool.poetry.group.dev.dependencies]
 sphinx = ">=6.2.1,<9"
 sphinx-autoapi = "^3.8.0"
+black = ">=26.1.0,<27.0.0"
 
 
 [tool.poetry]

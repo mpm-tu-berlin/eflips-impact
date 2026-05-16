@@ -1,43 +1,32 @@
-"""Pytest fixtures for eflips.impact.tco tests.
+"""Pytest fixtures for eflips-impact TCO tests.
 
-Uses the same sample.db.gz as tests_lca. Each test gets a fresh function-scoped
-DB so that mutations don't leak between tests.
+Uses ``tests/data/sample.db.gz`` as the test database.  ``db_engine`` is
+session-scoped (loaded once per pytest session).  ``db_session`` is
+function-scoped: each test receives a fresh ``Session`` backed by the shared
+engine; any writes are rolled back on teardown so tests cannot contaminate
+each other.
 """
 
 from __future__ import annotations
 
-import gzip
-import importlib.resources
 import json
-import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Generator
 
 import pytest
-from alembic import command
-from alembic.config import Config
-from sqlalchemy import distinct, text
 from sqlalchemy.orm import Session
 
-import eflips.model
-from eflips.model import (
-    Event,
-    EventType,
-    Process,
-    Scenario,
-    Area,
-    VehicleType,
-)
+from eflips.model import Scenario
 from eflips.impact.utils import complete_fleet
+from db_setup import setup_sqlite_engine
 
-DATA_DIR = Path(__file__).parent.parent / "tests_lca" / "data"
-SCENARIO_ID = 1
 SIM_START = datetime(2025, 6, 17, 0, 0, 0, tzinfo=timezone.utc)
 SIM_END = datetime(2025, 6, 19, 0, 0, 0, tzinfo=timezone.utc)
+SCENARIO_ID = 1
 
 # ---------------------------------------------------------------------------
-# Shared parameter constants
+# Shared TCO parameter constants (imported by test_params.py)
 # ---------------------------------------------------------------------------
 
 SCENARIO_TCO_PARAMS: dict = {
@@ -111,17 +100,8 @@ OPPORTUNITY_STATION_TCO_PARAMS: dict = {
     "cost_escalation": 0.0,
 }
 
-# ---------------------------------------------------------------------------
-# Fleet topology helper
-# ---------------------------------------------------------------------------
-
 
 def _full_fleet_dict() -> dict:
-    """Return a fleet.json payload matching the sample DB topology.
-
-    Sample DB has BEB VehicleTypes with name_short EN, DD, GN, plus depot
-    charging Areas and CHARGING_OPPORTUNITY events.
-    """
     return {
         "schema_version": 1,
         "battery_types": [
@@ -137,59 +117,13 @@ def _full_fleet_dict() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Alembic helper
+# Engine fixture (session-scoped – one database per test session)
 # ---------------------------------------------------------------------------
 
 
-def _make_alembic_cfg(engine: eflips.model.sqlalchemy.Engine) -> Config:  # type: ignore[name-defined]
-    """Build an alembic Config pointing at the eflips-model migration scripts.
-
-    Args:
-        engine: The SQLAlchemy engine whose URL to configure.
-
-    Returns:
-        A configured ``alembic.config.Config``.
-    """
-    cfg = Config(str(importlib.resources.files("eflips.model").joinpath("alembic.ini")))
-    cfg.set_main_option("sqlalchemy.url", str(engine.url))
-    cfg.set_main_option(
-        "script_location",
-        str(importlib.resources.files("eflips.model").joinpath("migrations")),
-    )
-    return cfg
-
-
-# ---------------------------------------------------------------------------
-# Engine fixture
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture
-def db_engine(tmp_path: Path):  # type: ignore[type-arg]
-    """Function-scoped engine backed by a fresh extract of sample.db.
-
-    Applies the same schema upgrades used in tests_lca/conftest.py so that
-    the alembic version can be stamped to head.
-    """
-    db_path = tmp_path / "sample.db"
-    with (
-        gzip.open(DATA_DIR / "sample.db.gz", "rb") as f_in,
-        open(db_path, "wb") as f_out,
-    ):
-        shutil.copyfileobj(f_in, f_out)
-
-    engine = eflips.model.create_engine(f"sqlite:///{db_path}")
-
-    with engine.begin() as conn:
-        conn.execute(text("ALTER TABLE VehicleType ADD COLUMN energy_source TEXT"))
-        conn.execute(
-            text("UPDATE \"VehicleType\" SET energy_source = 'BATTERY_ELECTRIC'")
-        )
-        conn.execute(text("ALTER TABLE VehicleType ADD COLUMN lca_parameters JSON"))
-        conn.execute(text("ALTER TABLE BatteryType ADD COLUMN lca_parameters JSON"))
-        conn.execute(text("ALTER TABLE ChargingPointType ADD COLUMN lca_parameters JSON"))
-
-    command.stamp(_make_alembic_cfg(engine), "heads")
+@pytest.fixture(scope="session")
+def db_engine(tmp_path_factory: pytest.TempPathFactory):
+    engine = setup_sqlite_engine(tmp_path_factory)
     try:
         yield engine
     finally:
@@ -197,13 +131,13 @@ def db_engine(tmp_path: Path):  # type: ignore[type-arg]
 
 
 # ---------------------------------------------------------------------------
-# Session fixture
+# Session fixture (function-scoped – rolls back after each test)
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture
-def db_session(db_engine) -> Generator[Session, None, None]:  # type: ignore[type-arg]
-    """Function-scoped session; mutations are rolled back on teardown."""
+def db_session(db_engine) -> Generator[Session, None, None]:
+    """Function-scoped session; all writes are rolled back on teardown."""
     session = Session(db_engine)
     try:
         yield session
@@ -214,48 +148,28 @@ def db_session(db_engine) -> Generator[Session, None, None]:  # type: ignore[typ
 
 @pytest.fixture
 def scenario(db_session: Session) -> Scenario:
-    """The single Scenario from sample.db (id=1)."""
     return db_session.query(Scenario).filter(Scenario.id == SCENARIO_ID).one()
-
-
-# ---------------------------------------------------------------------------
-# Fleet topology fixture (BatteryType + ChargingPointType rows)
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
 def fleet_session(db_session: Session, scenario: Scenario, tmp_path: Path) -> Session:
-    """Session with fleet topology initialised via :func:`complete_fleet`.
-
-    Creates one BatteryType per BEB VehicleType (EN, DD, GN) and two
-    ChargingPointType rows (depot, opportunity), assigning them to the
-    relevant VehicleType / Area / Station rows.
-    """
+    """Session with fleet topology initialised via :func:`complete_fleet`."""
     fleet_path = tmp_path / "fleet.json"
     fleet_path.write_text(json.dumps(_full_fleet_dict()), encoding="utf-8")
     complete_fleet(scenario, fleet_path, delete_existing_data=False)
     return db_session
 
 
-# ---------------------------------------------------------------------------
-# Fully-populated TCO fixture
-# ---------------------------------------------------------------------------
-
-
 @pytest.fixture
 def tco_session(fleet_session: Session, scenario: Scenario) -> Session:
-    """Fleet session with all tco_parameters written via :func:`init_tco_parameters`.
-
-    Sets tco_parameters on the Scenario, all VehicleTypes, all BatteryTypes,
-    both ChargingPointTypes, and all charging-station Station rows.
-    """
+    """Fleet session with all tco_parameters written via :func:`init_tco_params`."""
     from eflips.impact.tco import init_tco_params
     from eflips.impact.tco.dataclasses import (
+        BatteryTypeTCOParams,
+        ChargingInfrastructureTCOParams,
+        ChargingPointTypeTCOParams,
         ScenarioTCOParams,
         VehicleTypeTCOParams,
-        BatteryTypeTCOParams,
-        ChargingPointTypeTCOParams,
-        ChargingInfrastructureTCOParams,
     )
 
     init_tco_params(

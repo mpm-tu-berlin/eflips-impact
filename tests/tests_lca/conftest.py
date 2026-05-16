@@ -1,29 +1,20 @@
-"""Pytest fixtures for eflips-lca tests.
+"""Pytest fixtures for eflips-impact LCA tests.
 
-Extracts the gzipped sample SQLite database, applies the schema changes
-introduced by eflips-model v10.1.0 and v10.2.0 via plain
-``ALTER TABLE … ADD COLUMN`` statements (the alembic migration files use
-PostgreSQL-specific SQL that cannot run against SQLite), stamps the
-alembic version to ``head``, and populates ``lca_parameters`` on all relevant
-ORM entities so that both extraction and calculation tests can run.
+Uses ``tests/data/sample.db.gz`` as the test database.  The engine is
+session-scoped (loaded once per pytest session).  ``db_session`` is also
+session-scoped: it writes ``lca_parameters``, ``BatteryType``, and
+``ChargingPointType`` rows once and all LCA tests share that committed state
+(they are read-only after the setup commit).
 """
 
 from __future__ import annotations
 
-import gzip
-import importlib.resources
-import shutil
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Generator
 
 import pytest
-from alembic import command
-from alembic.config import Config
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-import eflips.model
 from eflips.model import (
     Area,
     BatteryType,
@@ -39,34 +30,25 @@ from eflips.impact.lca.dataclasses import (
     VehicleTypeLCAParams,
 )
 from eflips.impact.lca.util import DefaultImpactVector
-
-DATA_DIR = Path(__file__).parent / "data"
-
-# ---------------------------------------------------------------------------
-# Simulation window constants
-# ---------------------------------------------------------------------------
+from db_setup import setup_sqlite_engine
 
 SIM_START = datetime(2025, 6, 17, 0, 0, 0, tzinfo=timezone.utc)
 SIM_END = datetime(2025, 6, 19, 0, 0, 0, tzinfo=timezone.utc)
 SCENARIO_ID = 1
-# ---------------------------------------------------------------------------
-# Helpers to build realistic lca_parameters dicts
-# ---------------------------------------------------------------------------
+
+_VTYPE_PARAMS: dict[int, tuple[float, float]] = {
+    12: (1.2, 200.0),
+    13: (1.8, 300.0),
+    14: (1.5, 250.0),
+}
+_BEB_AREA_IDS = [5, 6, 11, 12, 17]
+_TERMINAL_STATION_IDS = [3104, 62202, 79221, 195014, 260005, 1102005109]
 
 
 def _beb_vehicle_lca_parameters(
     consumption_kwh_per_km: float,
     motor_rated_power_kw: float,
 ) -> dict:
-    """Return a realistic BEB VehicleTypeLCAParams dict.
-
-    Args:
-        consumption_kwh_per_km: Average energy consumption in kWh/km.
-        motor_rated_power_kw: Rated motor power in kW.
-
-    Returns:
-        A dict suitable for ``VehicleType.lca_parameters``.
-    """
     params = VehicleTypeLCAParams(
         chassis_emission_factors_per_kg=DefaultImpactVector(gwp=10.0),
         motor_rated_power_kw=motor_rated_power_kw,
@@ -90,25 +72,14 @@ def _beb_vehicle_lca_parameters(
 
 
 def _battery_lca_parameters() -> dict:
-    """Return a realistic LFP BatteryTypeLCAParams dict.
-
-    Returns:
-        A dict suitable for ``BatteryType.lca_parameters``.
-    """
-    params = BatteryTypeLCAParams(
+    return BatteryTypeLCAParams(
         emission_factors_per_kg=DefaultImpactVector(gwp=100.0),
         battery_lifetime_years=8.0,
-    )
-    return params.to_dict()
+    ).to_dict()
 
 
 def _charging_point_lca_parameters() -> dict:
-    """Return a realistic 150 kW CCS ChargingPointTypeLCAParams dict.
-
-    Returns:
-        A dict suitable for ``ChargingPointType.lca_parameters``.
-    """
-    params = ChargingPointTypeLCAParams(
+    return ChargingPointTypeLCAParams(
         control_unit_emissions=DefaultImpactVector(gwp=500.0),
         power_unit_emission=DefaultImpactVector(gwp=9000.0),
         power_unit_rated_power_kw=150.0,
@@ -118,91 +89,22 @@ def _charging_point_lca_parameters() -> dict:
         concrete_emissions_per_m3=DefaultImpactVector(gwp=300.0),
         foundation_volume_per_point_m3=0.5,
         infrastructure_lifetime_years=15.0,
-    )
-    return params.to_dict()
-
-
-# ---------------------------------------------------------------------------
-# Engine fixture
-# ---------------------------------------------------------------------------
-
-
-def _make_alembic_cfg(engine: eflips.model.sqlalchemy.Engine) -> Config:  # type: ignore[name-defined]
-    """Build an alembic Config pointing at the eflips-model migration scripts.
-
-    Args:
-        engine: The SQLAlchemy engine whose URL to configure.
-
-    Returns:
-        A configured ``alembic.config.Config``.
-    """
-    cfg = Config(str(importlib.resources.files("eflips.model").joinpath("alembic.ini")))
-    cfg.set_main_option("sqlalchemy.url", str(engine.url))
-    cfg.set_main_option(
-        "script_location",
-        str(importlib.resources.files("eflips.model").joinpath("migrations")),
-    )
-    return cfg
+    ).to_dict()
 
 
 @pytest.fixture(scope="session")
-def db_engine(tmp_path_factory: pytest.TempPathFactory):  # type: ignore[type-arg]
-    """Session-scoped engine backed by a schema-upgraded copy of sample.db.
-
-    Extracts ``tests/data/sample.db.gz``, adds the columns introduced by
-    eflips-model v10.1.0 (``energy_source``) and v10.2.0 (``lca_parameters``)
-    via plain SQLite ``ALTER TABLE`` statements, and stamps the alembic
-    version to ``head``.
-    """
-    tmp = tmp_path_factory.mktemp("db") / "sample.db"
-    with gzip.open(DATA_DIR / "sample.db.gz", "rb") as f_in, open(tmp, "wb") as f_out:
-        shutil.copyfileobj(f_in, f_out)
-
-    engine = eflips.model.create_engine(f"sqlite:///{tmp}")
-
-    with engine.begin() as conn:
-        # v10.1.0: add energy_source to VehicleType
-        conn.execute(text("ALTER TABLE VehicleType ADD COLUMN energy_source TEXT"))
-        conn.execute(
-            text("UPDATE \"VehicleType\" SET energy_source = 'BATTERY_ELECTRIC'")
-        )
-        # v10.2.0: add lca_parameters to three tables
-        conn.execute(text("ALTER TABLE VehicleType ADD COLUMN lca_parameters JSON"))
-        conn.execute(text("ALTER TABLE BatteryType ADD COLUMN lca_parameters JSON"))
-        conn.execute(text("ALTER TABLE ChargingPointType ADD COLUMN lca_parameters JSON"))
-        # BatteryType.chemistry is already TEXT in SQLite and the table is
-        # empty, so no chemistry migration is needed.
-
-    command.stamp(_make_alembic_cfg(engine), "heads")
-    return engine
-
-
-# ---------------------------------------------------------------------------
-# Session fixture: populate lca_parameters and yield
-# ---------------------------------------------------------------------------
-
-# Vehicle-type-specific consumption and motor power
-_VTYPE_PARAMS: dict[int, tuple[float, float]] = {
-    12: (1.2, 200.0),  # Ebusco 3.0 12 m
-    13: (1.8, 300.0),  # Solaris Urbino 18 m
-    14: (1.5, 250.0),  # Alexander Dennis Enviro500EV (no rotations)
-}
-
-# IDs of BEB depot areas and non-depot electrified terminal stations
-_BEB_AREA_IDS = [5, 6, 11, 12, 17]
-_TERMINAL_STATION_IDS = [3104, 62202, 79221, 195014, 260005, 1102005109]
+def db_engine(tmp_path_factory: pytest.TempPathFactory):
+    engine = setup_sqlite_engine(tmp_path_factory)
+    try:
+        yield engine
+    finally:
+        engine.dispose()
 
 
 @pytest.fixture(scope="session")
-def db_session(db_engine) -> Generator[Session, None, None]:  # type: ignore[type-arg]
-    """Session-scoped SQLAlchemy session with lca_parameters fully populated.
-
-    Creates one ``ChargingPointType`` (150 kW CCS), one ``BatteryType``
-    (LFP), assigns them to the relevant ORM entities, and sets
-    ``lca_parameters`` on all three entity types before yielding the session.
-    """
+def db_session(db_engine) -> Generator[Session, None, None]:
+    """Session-scoped SQLAlchemy session with lca_parameters fully populated."""
     with Session(db_engine) as session:
-        # ---- ChargingPointType ------------------------------------------------
         cpt = ChargingPointType(
             scenario_id=SCENARIO_ID,
             name="CCS 150 kW",
@@ -212,7 +114,6 @@ def db_session(db_engine) -> Generator[Session, None, None]:  # type: ignore[typ
         session.add(cpt)
         session.flush()
 
-        # ---- BatteryType (LFP, 1 kWh/kg → battery_mass = capacity_kWh kg) ----
         bt = BatteryType(
             scenario_id=SCENARIO_ID,
             specific_mass=1.0,
@@ -222,7 +123,6 @@ def db_session(db_engine) -> Generator[Session, None, None]:  # type: ignore[typ
         session.add(bt)
         session.flush()
 
-        # ---- VehicleTypes -----------------------------------------------------
         for vtype in (
             session.query(VehicleType).filter_by(scenario_id=SCENARIO_ID).all()
         ):
@@ -230,11 +130,9 @@ def db_session(db_engine) -> Generator[Session, None, None]:  # type: ignore[typ
             vtype.lca_parameters = _beb_vehicle_lca_parameters(kwh_per_km, power_kw)
             vtype.battery_type_id = bt.id
 
-        # ---- BEB depot areas --------------------------------------------------
         for area in session.query(Area).filter(Area.id.in_(_BEB_AREA_IDS)).all():
             area.charging_point_type_id = cpt.id
 
-        # ---- Terminal stations ------------------------------------------------
         for station in (
             session.query(Station).filter(Station.id.in_(_TERMINAL_STATION_IDS)).all()
         ):
@@ -246,9 +144,4 @@ def db_session(db_engine) -> Generator[Session, None, None]:  # type: ignore[typ
 
 @pytest.fixture(scope="session")
 def scenario_obj(db_session: Session) -> Scenario:
-    """Session-scoped Scenario ORM object bound to db_session.
-
-    Returns:
-        The ``Scenario`` with id ``SCENARIO_ID`` from the test database.
-    """
     return db_session.query(Scenario).filter(Scenario.id == SCENARIO_ID).one()
