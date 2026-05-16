@@ -7,9 +7,9 @@ import pytest
 from eflips.model import EnergySource
 
 from eflips.impact.lca.dataclasses import (
-    BatteryTypeLcaParams,
-    ChargingPointTypeLcaParams,
-    VehicleTypeLcaParams,
+    BatteryTypeLCAParams,
+    ChargingPointTypeLCAParams,
+    VehicleTypeLCAParams,
 )
 from eflips.impact.lca.util import DefaultImpactVector
 
@@ -18,8 +18,8 @@ from eflips.impact.lca.util import DefaultImpactVector
 # ---------------------------------------------------------------------------
 
 
-def _beb_params() -> VehicleTypeLcaParams:
-    return VehicleTypeLcaParams(
+def _beb_params() -> VehicleTypeLCAParams:
+    return VehicleTypeLCAParams(
         chassis_emission_factors_per_kg=DefaultImpactVector(gwp=10.0),
         motor_rated_power_kw=200.0,
         motor_emission_factors_per_kg=DefaultImpactVector(gwp=5.0),
@@ -40,8 +40,8 @@ def _beb_params() -> VehicleTypeLcaParams:
     )
 
 
-def _diesel_params() -> VehicleTypeLcaParams:
-    return VehicleTypeLcaParams(
+def _diesel_params() -> VehicleTypeLCAParams:
+    return VehicleTypeLCAParams(
         chassis_emission_factors_per_kg=DefaultImpactVector(gwp=10.0),
         motor_rated_power_kw=180.0,
         motor_emission_factors_per_kg=None,
@@ -61,13 +61,13 @@ def _diesel_params() -> VehicleTypeLcaParams:
 
 
 # ---------------------------------------------------------------------------
-# VehicleTypeLcaParams
+# VehicleTypeLCAParams
 # ---------------------------------------------------------------------------
 
 
-def test_vehicle_lca_params_beb_roundtrip() -> None:
+def test_vehicle_lca_parameters_beb_roundtrip() -> None:
     p = _beb_params()
-    restored = VehicleTypeLcaParams.from_dict(p.to_dict())
+    restored = VehicleTypeLCAParams.from_dict(p.to_dict())
     assert restored.motor_rated_power_kw == pytest.approx(200.0)
     assert restored.average_consumption_kwh_per_km == pytest.approx(1.2)
     assert restored.electricity_emission_factors_per_kwh is not None
@@ -76,9 +76,9 @@ def test_vehicle_lca_params_beb_roundtrip() -> None:
     assert EnergySource.BATTERY_ELECTRIC in restored.maintenance_per_year
 
 
-def test_vehicle_lca_params_diesel_roundtrip() -> None:
+def test_vehicle_lca_parameters_diesel_roundtrip() -> None:
     p = _diesel_params()
-    restored = VehicleTypeLcaParams.from_dict(p.to_dict())
+    restored = VehicleTypeLCAParams.from_dict(p.to_dict())
     assert restored.diesel_consumption_kg_per_km == pytest.approx(0.28)
     assert restored.motor_emission_factors_per_unit is not None
     assert restored.motor_emission_factors_per_unit.gwp == pytest.approx(3000.0)
@@ -86,9 +86,9 @@ def test_vehicle_lca_params_diesel_roundtrip() -> None:
     assert EnergySource.DIESEL in restored.maintenance_per_year
 
 
-def test_vehicle_lca_params_beb_rejects_diesel_fields() -> None:
+def test_vehicle_lca_parameters_beb_rejects_diesel_fields() -> None:
     with pytest.raises(ValueError, match="diesel_emission_factors_per_kg"):
-        VehicleTypeLcaParams(
+        VehicleTypeLCAParams(
             chassis_emission_factors_per_kg=DefaultImpactVector(gwp=10.0),
             motor_rated_power_kw=200.0,
             motor_emission_factors_per_kg=DefaultImpactVector(gwp=5.0),
@@ -109,9 +109,9 @@ def test_vehicle_lca_params_beb_rejects_diesel_fields() -> None:
         )
 
 
-def test_vehicle_lca_params_beb_rejects_motor_mass_kg() -> None:
+def test_vehicle_lca_parameters_beb_rejects_motor_mass_kg() -> None:
     with pytest.raises(ValueError, match="motor_mass_kg must be None"):
-        VehicleTypeLcaParams(
+        VehicleTypeLCAParams(
             chassis_emission_factors_per_kg=DefaultImpactVector(gwp=10.0),
             motor_rated_power_kw=200.0,
             motor_emission_factors_per_kg=DefaultImpactVector(gwp=5.0),
@@ -132,9 +132,9 @@ def test_vehicle_lca_params_beb_rejects_motor_mass_kg() -> None:
         )
 
 
-def test_vehicle_lca_params_diesel_requires_motor_mass_kg() -> None:
+def test_vehicle_lca_parameters_diesel_requires_motor_mass_kg() -> None:
     with pytest.raises(ValueError, match="motor_mass_kg is required for DIESEL"):
-        VehicleTypeLcaParams(
+        VehicleTypeLCAParams(
             chassis_emission_factors_per_kg=DefaultImpactVector(gwp=10.0),
             motor_rated_power_kw=180.0,
             motor_emission_factors_per_kg=None,
@@ -153,9 +153,9 @@ def test_vehicle_lca_params_diesel_requires_motor_mass_kg() -> None:
         )
 
 
-def test_vehicle_lca_params_diesel_rejects_beb_fields() -> None:
+def test_vehicle_lca_parameters_diesel_rejects_beb_fields() -> None:
     with pytest.raises(ValueError, match="motor_emission_factors_per_kg"):
-        VehicleTypeLcaParams(
+        VehicleTypeLCAParams(
             chassis_emission_factors_per_kg=DefaultImpactVector(gwp=10.0),
             motor_rated_power_kw=180.0,
             motor_emission_factors_per_kg=DefaultImpactVector(gwp=5.0),
@@ -174,9 +174,9 @@ def test_vehicle_lca_params_diesel_rejects_beb_fields() -> None:
         )
 
 
-def test_vehicle_lca_params_diesel_requires_consumption() -> None:
+def test_vehicle_lca_parameters_diesel_requires_consumption() -> None:
     with pytest.raises(ValueError, match="diesel_consumption_kg_per_km"):
-        VehicleTypeLcaParams(
+        VehicleTypeLCAParams(
             chassis_emission_factors_per_kg=DefaultImpactVector(gwp=10.0),
             motor_rated_power_kw=180.0,
             motor_emission_factors_per_kg=None,
@@ -196,22 +196,22 @@ def test_vehicle_lca_params_diesel_requires_consumption() -> None:
 
 
 # ---------------------------------------------------------------------------
-# BatteryTypeLcaParams
+# BatteryTypeLCAParams
 # ---------------------------------------------------------------------------
 
 
-def test_battery_lca_params_roundtrip() -> None:
-    p = BatteryTypeLcaParams(
+def test_battery_lca_parameters_roundtrip() -> None:
+    p = BatteryTypeLCAParams(
         emission_factors_per_kg=DefaultImpactVector(gwp=100.0),
         battery_lifetime_years=8.0,
     )
-    restored = BatteryTypeLcaParams.from_dict(p.to_dict())
+    restored = BatteryTypeLCAParams.from_dict(p.to_dict())
     assert restored.battery_lifetime_years == pytest.approx(8.0)
     assert restored.emission_factors_per_kg.gwp == pytest.approx(100.0)
 
 
 def test_battery_tco_consistency_warning() -> None:
-    p = BatteryTypeLcaParams(
+    p = BatteryTypeLCAParams(
         emission_factors_per_kg=DefaultImpactVector(gwp=100.0),
         battery_lifetime_years=8.0,
     )
@@ -222,7 +222,7 @@ def test_battery_tco_consistency_warning() -> None:
 def test_battery_tco_consistency_no_warning_when_equal(
     recwarn: pytest.WarningsChecker,
 ) -> None:
-    p = BatteryTypeLcaParams(
+    p = BatteryTypeLCAParams(
         emission_factors_per_kg=DefaultImpactVector(gwp=100.0),
         battery_lifetime_years=8.0,
     )
@@ -233,7 +233,7 @@ def test_battery_tco_consistency_no_warning_when_equal(
 def test_battery_tco_consistency_no_warning_when_none(
     recwarn: pytest.WarningsChecker,
 ) -> None:
-    p = BatteryTypeLcaParams(
+    p = BatteryTypeLCAParams(
         emission_factors_per_kg=DefaultImpactVector(gwp=100.0),
         battery_lifetime_years=8.0,
     )
@@ -242,12 +242,12 @@ def test_battery_tco_consistency_no_warning_when_none(
 
 
 # ---------------------------------------------------------------------------
-# ChargingPointTypeLcaParams
+# ChargingPointTypeLCAParams
 # ---------------------------------------------------------------------------
 
 
-def test_charging_point_lca_params_roundtrip() -> None:
-    p = ChargingPointTypeLcaParams(
+def test_charging_point_lca_parameters_roundtrip() -> None:
+    p = ChargingPointTypeLCAParams(
         control_unit_emissions=DefaultImpactVector(gwp=500.0),
         power_unit_emission=DefaultImpactVector(gwp=9000.0),
         power_unit_rated_power_kw=150.0,
@@ -258,7 +258,7 @@ def test_charging_point_lca_params_roundtrip() -> None:
         foundation_volume_per_point_m3=0.5,
         infrastructure_lifetime_years=15.0,
     )
-    restored = ChargingPointTypeLcaParams.from_dict(p.to_dict())
+    restored = ChargingPointTypeLCAParams.from_dict(p.to_dict())
     assert restored.power_unit_rated_power_kw == pytest.approx(150.0)
     assert restored.infrastructure_lifetime_years == pytest.approx(15.0)
     assert restored.concrete_emissions_per_m3.gwp == pytest.approx(300.0)

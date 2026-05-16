@@ -11,11 +11,11 @@ from sqlalchemy.orm import Session
 
 from eflips.model import BatteryType, ChargingPointType, Scenario, VehicleType
 from eflips.impact.tco.dataclasses import (
-    BatteryTypeTCOParameter,
-    ChargingInfrastructureTCOParameter,
-    ChargingPointTypeTCOParameter,
-    ScenarioTCOParameter,
-    VehicleTypeTCOParameter,
+    BatteryTypeTCOParams,
+    ChargingInfrastructureTCOParams,
+    ChargingPointTypeTCOParams,
+    ScenarioTCOParams,
+    VehicleTypeTCOParams,
 )
 from eflips.impact.tco import init_tco_params
 
@@ -30,14 +30,7 @@ from tests.tests_tco.conftest import (
     VEHICLE_TYPE_TCO_PARAMS,
 )
 
-DEFAULTS_JSON = (
-    Path(__file__).parent.parent.parent
-    / "eflips"
-    / "impact"
-    / "defaults"
-    / "example"
-    / "tco.json"
-)
+DEFAULTS_JSON = Path(__file__).parent.parent / "data" / "tco.json"
 
 
 # ---------------------------------------------------------------------------
@@ -48,7 +41,7 @@ DEFAULTS_JSON = (
 def test_scenario_params_written(fleet_session: Session, scenario: Scenario) -> None:
     init_tco_params(
         scenario,
-        scenario_params=ScenarioTCOParameter.from_dict(SCENARIO_TCO_PARAMS),
+        scenario_params=ScenarioTCOParams.from_dict(SCENARIO_TCO_PARAMS),
     )
     fleet_session.flush()
     fleet_session.refresh(scenario)
@@ -67,7 +60,7 @@ def test_vehicle_type_params_written(
     init_tco_params(
         scenario,
         vehicle_type_params=[
-            VehicleTypeTCOParameter.from_dict({"name_short": ns, **params})
+            VehicleTypeTCOParams.from_dict({"name_short": ns, **params})
             for ns, params in VEHICLE_TYPE_TCO_PARAMS.items()
         ],
     )
@@ -88,7 +81,7 @@ def test_unknown_vehicle_name_short_warns(
         init_tco_params(
             scenario,
             vehicle_type_params=[
-                VehicleTypeTCOParameter(
+                VehicleTypeTCOParams(
                     name_short="UNKNOWN_VT",
                     useful_life=10,
                     procurement_cost=100_000.0,
@@ -110,7 +103,7 @@ def test_battery_type_params_written(
     init_tco_params(
         scenario,
         battery_type_params=[
-            BatteryTypeTCOParameter(
+            BatteryTypeTCOParams(
                 vehicle_name_short=ns,
                 procurement_cost=BATTERY_TCO_PARAMS["procurement_cost"],
                 useful_life=BATTERY_TCO_PARAMS["useful_life"],
@@ -141,7 +134,7 @@ def test_battery_missing_assignment_warns(
         init_tco_params(
             scenario,
             battery_type_params=[
-                BatteryTypeTCOParameter(
+                BatteryTypeTCOParams(
                     vehicle_name_short="EN",
                     procurement_cost=190.0,
                     useful_life=7,
@@ -162,10 +155,10 @@ def test_charging_point_type_params_written(
     init_tco_params(
         scenario,
         charging_point_type_params=[
-            ChargingPointTypeTCOParameter.from_dict(
+            ChargingPointTypeTCOParams.from_dict(
                 {"type": "depot", **DEPOT_CPT_TCO_PARAMS}
             ),
-            ChargingPointTypeTCOParameter.from_dict(
+            ChargingPointTypeTCOParams.from_dict(
                 {"type": "opportunity", **OPPORTUNITY_CPT_TCO_PARAMS}
             ),
         ],
@@ -188,7 +181,7 @@ def test_missing_cpt_warns(db_session: Session, scenario: Scenario) -> None:
         init_tco_params(
             scenario,
             charging_point_type_params=[
-                ChargingPointTypeTCOParameter.from_dict(
+                ChargingPointTypeTCOParams.from_dict(
                     {"type": "depot", **DEPOT_CPT_TCO_PARAMS}
                 )
             ],
@@ -209,10 +202,10 @@ def test_charging_infra_params_written(
     init_tco_params(
         scenario,
         charging_infra_params=[
-            ChargingInfrastructureTCOParameter.from_dict(
+            ChargingInfrastructureTCOParams.from_dict(
                 {"type": "depot", **DEPOT_STATION_TCO_PARAMS}
             ),
-            ChargingInfrastructureTCOParameter.from_dict(
+            ChargingInfrastructureTCOParams.from_dict(
                 {"type": "station", **OPPORTUNITY_STATION_TCO_PARAMS}
             ),
         ],
@@ -258,7 +251,7 @@ def test_battery_unknown_vehicle_name_short_warns(
         init_tco_params(
             scenario,
             battery_type_params=[
-                BatteryTypeTCOParameter(
+                BatteryTypeTCOParams(
                     vehicle_name_short="UNKNOWN",
                     procurement_cost=190.0,
                     useful_life=7,

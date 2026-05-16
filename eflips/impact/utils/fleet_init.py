@@ -3,7 +3,7 @@
 Reads a ``fleet.json`` file and brings the BatteryType and ChargingPointType
 rows of a scenario into the state described by the file. Owns *only* row
 creation, deletion, and FK assignment; never writes ``tco_parameters`` or
-``lca_params`` columns. Pair this with :mod:`eflips.impact.tco` and
+``lca_parameters`` columns. Pair this with :mod:`eflips.impact.tco` and
 :mod:`eflips.impact.lca` to populate parameter columns afterwards.
 
 Cross-file matching is by string keys (``vehicle_name_short``, ``type``);
@@ -35,7 +35,6 @@ from eflips.model import (
 )
 from eflips.impact.utils.session import create_session
 
-
 _ALLOWED_CHEMISTRIES = frozenset({"lfp", "nmc"})
 
 
@@ -65,7 +64,7 @@ class _FleetConfig:
     charging_point_types: List[_ChargingPointEntry]
 
 
-def init_fleet(
+def complete_fleet(
     scenario: Union[Scenario, int, Any],
     filepath: Path,
     delete_existing_data: bool,
@@ -98,10 +97,10 @@ def init_fleet(
     .. note::
 
         When ``delete_existing_data=True``, any existing ``tco_parameters``
-        or ``lca_params`` JSONB content on VehicleType / Area / Station rows
+        or ``lca_parameters`` JSONB content on VehicleType / Area / Station rows
         becomes stale (it referenced the deleted rows). The caller is
         responsible for re-running the relevant ``init_*`` / ``populate_*``
-        functions afterwards. ``init_fleet`` does not auto-clear or warn
+        functions afterwards. ``complete_fleet`` does not auto-clear or warn
         about stale params.
     """
     config = _load_fleet_config(filepath)

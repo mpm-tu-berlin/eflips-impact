@@ -7,31 +7,24 @@ import pytest
 from pathlib import Path
 
 from eflips.impact.tco.dataclasses import (
-    BatteryTypeTCOParameter,
-    ChargingInfrastructureTCOParameter,
-    ChargingPointTypeTCOParameter,
-    ScenarioTCOParameter,
-    TcoParamSet,
-    VehicleTypeTCOParameter,
+    BatteryTypeTCOParams,
+    ChargingInfrastructureTCOParams,
+    ChargingPointTypeTCOParams,
+    ScenarioTCOParams,
+    TCOParamSet,
+    VehicleTypeTCOParams,
 )
 
-DEFAULTS_JSON = (
-    Path(__file__).parent.parent.parent
-    / "eflips"
-    / "impact"
-    / "defaults"
-    / "example"
-    / "tco.json"
-)
+DEFAULTS_JSON = Path(__file__).parent.parent / "data" / "tco.json"
 
 
 # ---------------------------------------------------------------------------
-# VehicleTypeTCOParameter
+# VehicleTypeTCOParams
 # ---------------------------------------------------------------------------
 
 
 def test_vehicle_type_electric_roundtrip() -> None:
-    p = VehicleTypeTCOParameter(
+    p = VehicleTypeTCOParams(
         name_short="EN",
         useful_life=14,
         procurement_cost=340_000.0,
@@ -46,7 +39,7 @@ def test_vehicle_type_electric_roundtrip() -> None:
 
 
 def test_vehicle_type_diesel_roundtrip() -> None:
-    p = VehicleTypeTCOParameter(
+    p = VehicleTypeTCOParams(
         name_short="DI",
         useful_life=12,
         procurement_cost=250_000.0,
@@ -60,7 +53,7 @@ def test_vehicle_type_diesel_roundtrip() -> None:
 
 def test_vehicle_type_both_consumption_raises() -> None:
     with pytest.raises(ValueError, match="Exactly one"):
-        VehicleTypeTCOParameter(
+        VehicleTypeTCOParams(
             name_short="X",
             useful_life=10,
             procurement_cost=100_000.0,
@@ -72,7 +65,7 @@ def test_vehicle_type_both_consumption_raises() -> None:
 
 def test_vehicle_type_neither_consumption_raises() -> None:
     with pytest.raises(ValueError, match="Exactly one"):
-        VehicleTypeTCOParameter(
+        VehicleTypeTCOParams(
             name_short="X",
             useful_life=10,
             procurement_cost=100_000.0,
@@ -88,19 +81,19 @@ def test_vehicle_type_from_dict_electric() -> None:
         "cost_escalation": -0.02,
         "average_electricity_consumption": 1.48,
     }
-    p = VehicleTypeTCOParameter.from_dict(d)
+    p = VehicleTypeTCOParams.from_dict(d)
     assert p.name_short == "EN"
     assert p.average_electricity_consumption == pytest.approx(1.48)
     assert p.average_diesel_consumption is None
 
 
 # ---------------------------------------------------------------------------
-# BatteryTypeTCOParameter
+# BatteryTypeTCOParams
 # ---------------------------------------------------------------------------
 
 
 def test_battery_type_roundtrip() -> None:
-    p = BatteryTypeTCOParameter(
+    p = BatteryTypeTCOParams(
         vehicle_name_short="EN",
         procurement_cost=190.0,
         useful_life=7,
@@ -120,18 +113,18 @@ def test_battery_type_from_dict() -> None:
         "useful_life": 8,
         "cost_escalation": -0.02,
     }
-    p = BatteryTypeTCOParameter.from_dict(d)
+    p = BatteryTypeTCOParams.from_dict(d)
     assert p.vehicle_name_short == "DD"
     assert p.useful_life == 8
 
 
 # ---------------------------------------------------------------------------
-# ChargingPointTypeTCOParameter
+# ChargingPointTypeTCOParams
 # ---------------------------------------------------------------------------
 
 
 def test_cpt_roundtrip() -> None:
-    p = ChargingPointTypeTCOParameter(
+    p = ChargingPointTypeTCOParams(
         type="depot", procurement_cost=100_000.0, useful_life=20, cost_escalation=0.0
     )
     d = p.to_dict()
@@ -147,17 +140,17 @@ def test_cpt_from_dict() -> None:
         "useful_life": 20,
         "cost_escalation": 0.0,
     }
-    p = ChargingPointTypeTCOParameter.from_dict(d)
+    p = ChargingPointTypeTCOParams.from_dict(d)
     assert p.type == "opportunity"
 
 
 # ---------------------------------------------------------------------------
-# ScenarioTCOParameter
+# ScenarioTCOParams
 # ---------------------------------------------------------------------------
 
 
 def test_scenario_to_dict_includes_eta_avail() -> None:
-    p = ScenarioTCOParameter(
+    p = ScenarioTCOParams(
         project_duration=14,
         interest_rate=0.04,
         inflation_rate=0.02,
@@ -182,7 +175,7 @@ def test_scenario_to_dict_includes_eta_avail() -> None:
 
 
 def test_scenario_default_eta_avail() -> None:
-    p = ScenarioTCOParameter(
+    p = ScenarioTCOParams(
         project_duration=14,
         interest_rate=0.04,
         inflation_rate=0.02,
@@ -204,12 +197,12 @@ def test_scenario_default_eta_avail() -> None:
 
 
 # ---------------------------------------------------------------------------
-# TcoParamSet.from_json
+# TCOParamSet.from_json
 # ---------------------------------------------------------------------------
 
 
 def test_tco_param_set_from_json_loads() -> None:
-    params = TcoParamSet.from_json(DEFAULTS_JSON)
+    params = TCOParamSet.from_json(DEFAULTS_JSON)
     assert params.scenario.project_duration == 14
     assert params.scenario.eta_avail == pytest.approx(0.9)
     assert len(params.vehicle_types) == 3
@@ -219,12 +212,12 @@ def test_tco_param_set_from_json_loads() -> None:
 
 
 def test_tco_param_set_vehicle_type_names() -> None:
-    params = TcoParamSet.from_json(DEFAULTS_JSON)
+    params = TCOParamSet.from_json(DEFAULTS_JSON)
     name_shorts = {vt.name_short for vt in params.vehicle_types}
     assert name_shorts == {"EN", "DD", "GN"}
 
 
 def test_tco_param_set_cpt_types() -> None:
-    params = TcoParamSet.from_json(DEFAULTS_JSON)
+    params = TCOParamSet.from_json(DEFAULTS_JSON)
     types = {cpt.type for cpt in params.charging_point_types}
     assert types == {"depot", "opportunity"}

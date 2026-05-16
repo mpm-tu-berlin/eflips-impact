@@ -19,15 +19,19 @@ from eflips.model import (
 
 from eflips.impact.tco.calculation import TCOCalculator
 from eflips.impact.tco.dataclasses import (
-    ScenarioTCOParameter,
-    VehicleTypeTCOParameter,
-    BatteryTypeTCOParameter,
-    ChargingPointTypeTCOParameter,
-    ChargingInfrastructureTCOParameter,
-    TcoParamSet,
+    ScenarioTCOParams,
+    VehicleTypeTCOParams,
+    BatteryTypeTCOParams,
+    ChargingPointTypeTCOParams,
+    ChargingInfrastructureTCOParams,
+    TCOParamSet,
     TCOResult,
 )
-from eflips.impact.utils import create_session, get_scaling_window, get_extraction_window
+from eflips.impact.utils import (
+    create_session,
+    get_scaling_window,
+    get_extraction_window,
+)
 import logging
 
 
@@ -35,27 +39,27 @@ def init_tco_params(
     scenario: Union[Scenario, int, Any],
     json_path: Optional[Union[str, Path]] = None,
     database_url: Optional[str] = None,
-    scenario_params: Optional[ScenarioTCOParameter] = None,
-    vehicle_type_params: Optional[List[VehicleTypeTCOParameter]] = None,
-    battery_type_params: Optional[List[BatteryTypeTCOParameter]] = None,
-    charging_point_type_params: Optional[List[ChargingPointTypeTCOParameter]] = None,
-    charging_infra_params: Optional[List[ChargingInfrastructureTCOParameter]] = None,
+    scenario_params: Optional[ScenarioTCOParams] = None,
+    vehicle_type_params: Optional[List[VehicleTypeTCOParams]] = None,
+    battery_type_params: Optional[List[BatteryTypeTCOParams]] = None,
+    charging_point_type_params: Optional[List[ChargingPointTypeTCOParams]] = None,
+    charging_infra_params: Optional[List[ChargingInfrastructureTCOParams]] = None,
 ) -> None:
     """Initialize TCO parameters for the given scenario in the database.
 
     Writes ``tco_parameters`` JSONB on existing rows only. BatteryType and
     ChargingPointType row creation is the responsibility of
-    :func:`eflips.impact.utils.fleet_init.init_fleet`; this function will warn
+    :func:`eflips.impact.utils.fleet_init.complete_fleet`; this function will warn
     and skip if a referenced BatteryType or ChargingPointType is missing.
 
     Pass either ``json_path`` *or* the individual ``*_params`` keyword
     arguments — not both. Providing ``json_path`` together with any
     ``*_params`` argument raises :class:`ValueError`.
 
-    The JSON file must follow the :class:`~eflips.impact.tco.dataclasses.TcoParamSet`
+    The JSON file must follow the :class:`~eflips.impact.tco.dataclasses.TCOParamSet`
     structure:
 
-    .. code-block:: json
+    .. code-block:: none
 
         {
           "scenario": { ... },
@@ -70,19 +74,19 @@ def init_tco_params(
     :param json_path: Path to the JSON parameter file. Mutually exclusive with
         the individual ``*_params`` arguments.
     :param database_url: The database URL to connect to.
-    :param scenario_params: A :class:`ScenarioTCOParameter` instance.
-    :param vehicle_type_params: A list of :class:`VehicleTypeTCOParameter` instances.
+    :param scenario_params: A :class:`ScenarioTCOParams` instance.
+    :param vehicle_type_params: A list of :class:`VehicleTypeTCOParams` instances.
         Matched to existing VehicleTypes in the database by ``name_short``.
-    :param battery_type_params: A list of :class:`BatteryTypeTCOParameter` instances.
+    :param battery_type_params: A list of :class:`BatteryTypeTCOParams` instances.
         Matched via ``vehicle_name_short`` to find the associated VehicleType, then
         writes ``tco_parameters`` on the linked BatteryType row. Skips with a warning
-        if the VehicleType has no BatteryType assigned (call ``init_fleet`` first).
-    :param charging_point_type_params: A list of :class:`ChargingPointTypeTCOParameter`
+        if the VehicleType has no BatteryType assigned (call ``complete_fleet`` first).
+    :param charging_point_type_params: A list of :class:`ChargingPointTypeTCOParams`
         instances. Matched by ``type`` ("depot" or "opportunity"). Skips with a warning
         if no ChargingPointType of the given type exists in the scenario (call
-        ``init_fleet`` first). Assumes at most one ChargingPointType per type per
+        ``complete_fleet`` first). Assumes at most one ChargingPointType per type per
         scenario.
-    :param charging_infra_params: A list of :class:`ChargingInfrastructureTCOParameter`
+    :param charging_infra_params: A list of :class:`ChargingInfrastructureTCOParams`
         instances. Converted via ``to_dict()`` and applied to stations by ``type``
         ("station" or "depot").
     :raises ValueError: If ``json_path`` is supplied together with any individual
@@ -102,7 +106,7 @@ def init_tco_params(
         )
 
     if json_path is not None:
-        params = TcoParamSet.from_json(Path(json_path))
+        params = TCOParamSet.from_json(Path(json_path))
         scenario_params = params.scenario
         vehicle_type_params = params.vehicle_types
         battery_type_params = params.battery_types
@@ -159,7 +163,7 @@ def init_tco_params(
                     warnings.warn(
                         f"VehicleType '{bt_param.vehicle_name_short}' in scenario "
                         f"{scenario.id} has no BatteryType assigned. Run "
-                        f"eflips.impact.utils.init_fleet first to create and assign "
+                        f"eflips.impact.utils.complete_fleet first to create and assign "
                         f"BatteryType rows. Skipping.",
                         UserWarning,
                     )
@@ -175,7 +179,7 @@ def init_tco_params(
         # --- Charging point types: write on existing row only ---
         #
         # Assumes at most one ChargingPointType per ``type`` (depot, opportunity) per scenario.
-        # Row creation lives in ``init_fleet``; this function only writes ``tco_parameters``.
+        # Row creation lives in ``complete_fleet``; this function only writes ``tco_parameters``.
         if charging_point_type_params is not None:
             for cp_param in charging_point_type_params:
                 match cp_param.type:
@@ -213,7 +217,7 @@ def init_tco_params(
                 if not existing_cps:
                     warnings.warn(
                         f"No '{cp_param.type}' ChargingPointType found in scenario "
-                        f"{scenario.id}. Run eflips.impact.utils.init_fleet first to "
+                        f"{scenario.id}. Run eflips.impact.utils.complete_fleet first to "
                         f"create and assign ChargingPointType rows. Skipping.",
                         UserWarning,
                     )
@@ -228,7 +232,7 @@ def init_tco_params(
         # The same dict is written to every station of the matching type. If per-station
         # parameters are needed in the future, replace the bulk loop below with a per-station
         # lookup and introduce a station identifier (e.g. station name) as a match key in
-        # ChargingInfrastructureTCOParameter.
+        # ChargingInfrastructureTCOParams.
         if charging_infra_params is not None:
             for infra_param in charging_infra_params:
                 match infra_param.type:

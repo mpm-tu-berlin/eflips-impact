@@ -1,7 +1,7 @@
 """Example script: full TCO pipeline.
 
 Pipeline:
-1. Init fleet topology (BatteryType + ChargingPointType rows) via ``init_fleet``.
+1. Init fleet topology (BatteryType + ChargingPointType rows) via ``complete_fleet``.
 2. Populate ``tco_parameters`` on all DB entities via ``init_tco_parameters_from_json``
    (reads ``tco.json`` for scenario / vehicle / battery / CPT / station parameters).
 3. Run ``calculate_tco`` to get cost-per-km by category.
@@ -20,13 +20,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from eflips.impact.tco import calculate_tco, init_tco_params
-from eflips.impact.utils import init_fleet
+from eflips.impact.utils import complete_fleet
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
-DATABASE_URL = "sqlite:////home/shuyao/PycharmProjects/eflips-data/Simulation_term.db"
+DATABASE_URL = "your_database_url_here"  # e.g. "sqlite:////path/to/your/database.db"
 SCENARIO_ID = 1
 
 # Path to the bundled example preset files.
@@ -36,8 +36,11 @@ TCO_JSON = _DEFAULTS / "tco.json"
 # ---------------------------------------------------------------------------
 # Step 1: Init fleet
 # ---------------------------------------------------------------------------
-print("Step 1: Init fleet ...")
-init_fleet(
+print(
+    "Step 1: Add BatteryType and ChargingPointType data if they are not in the database. "
+    "Skip this step if these information are already in the database.\n"
+)
+complete_fleet(
     scenario=SCENARIO_ID,
     filepath=_DEFAULTS / "fleet.json",
     delete_existing_data=True,
@@ -48,7 +51,10 @@ print("  Fleet topology written to DB.\n")
 # ---------------------------------------------------------------------------
 # Step 2: Populate tco_parameters via init_tco_parameters_from_json
 # ---------------------------------------------------------------------------
-print("Step 2: Writing tco_parameters ...")
+print(
+    "Step 2: running init_tco_params. This will read tco.json, "
+    "and write the resulting tco_parameters to the database. Skip this step if tco_parameters are already in the database.\n"
+)
 init_tco_params(
     scenario=SCENARIO_ID,
     json_path=TCO_JSON,

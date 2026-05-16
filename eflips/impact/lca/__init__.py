@@ -7,13 +7,13 @@ ISO 14040/14044.
 
 from eflips.impact.lca.calculation import calculate_lca
 from eflips.impact.lca.dataclasses import (
-    BatteryTypeLcaParams,
-    ChargingPointTypeLcaParams,
+    BatteryTypeLCAParams,
+    ChargingPointTypeLCAParams,
     ItemType,
-    LcaItem,
-    LcaResult,
-    LcaScope,
-    VehicleTypeLcaParams,
+    LCAItem,
+    LCAResult,
+    LCAScope,
+    VehicleTypeLCAParams,
 )
 from eflips.impact.utils.extraction import (
     AreaSimData,
@@ -24,23 +24,23 @@ from eflips.impact.utils.extraction import (
 )
 from eflips.impact.lca.open_lca_data import (
     ChargingPointTypeOverrides,
-    OpenLcaData,
+    OpenLCAData,
     VehicleTypeOverrides,
     YearSeries,
     init_lca_params,
-    populate_lca_params_from_data,
+    populate_lca_parameters_from_data,
 )
 from eflips.impact.lca.util import DefaultImpactVector, ImpactVector
 
 __all__ = [
     "ImpactVector",
     "DefaultImpactVector",
-    "VehicleTypeLcaParams",
-    "BatteryTypeLcaParams",
-    "ChargingPointTypeLcaParams",
-    "LcaItem",
-    "LcaResult",
-    "LcaScope",
+    "VehicleTypeLCAParams",
+    "BatteryTypeLCAParams",
+    "ChargingPointTypeLCAParams",
+    "LCAItem",
+    "LCAResult",
+    "LCAScope",
     "ItemType",
     "ScenarioSimData",
     "VehicleTypeSimData",
@@ -48,10 +48,10 @@ __all__ = [
     "StationSimData",
     "extract_simulation_data",
     "calculate_lca",
-    "OpenLcaData",
+    "OpenLCAData",
     "YearSeries",
     "VehicleTypeOverrides",
     "ChargingPointTypeOverrides",
     "init_lca_params",
-    "populate_lca_params_from_data",
+    "populate_lca_parameters_from_data",
 ]

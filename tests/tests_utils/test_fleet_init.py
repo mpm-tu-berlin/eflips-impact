@@ -1,4 +1,4 @@
-"""Tests for :func:`eflips.impact.utils.fleet_init.init_fleet`."""
+"""Tests for :func:`eflips.impact.utils.fleet_init.complete_fleet`."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ from eflips.model import (
     Station,
     VehicleType,
 )
-from eflips.impact.utils import init_fleet
+from eflips.impact.utils import complete_fleet
 
 SCENARIO_ID = 1
 
@@ -73,7 +73,7 @@ class TestHappyPath:
     ) -> None:
         path = _write_fleet_json(tmp_path, _full_fleet_dict())
 
-        init_fleet(scenario, path, delete_existing_data=False)
+        complete_fleet(scenario, path, delete_existing_data=False)
 
         bts = (
             db_session.query(BatteryType)
@@ -98,7 +98,7 @@ class TestHappyPath:
     ) -> None:
         path = _write_fleet_json(tmp_path, _full_fleet_dict())
 
-        init_fleet(scenario, path, delete_existing_data=False)
+        complete_fleet(scenario, path, delete_existing_data=False)
 
         cpts = (
             db_session.query(ChargingPointType)
@@ -148,7 +148,7 @@ class TestHappyPath:
         )
         path = _write_fleet_json(tmp_path, data)
 
-        init_fleet(scenario, path, delete_existing_data=False)
+        complete_fleet(scenario, path, delete_existing_data=False)
 
         bts = (
             db_session.query(BatteryType)
@@ -178,7 +178,7 @@ class TestValidation:
         path = _write_fleet_json(tmp_path, data)
 
         with pytest.warns(UserWarning, match="GN"):
-            init_fleet(scenario, path, delete_existing_data=False)
+            complete_fleet(scenario, path, delete_existing_data=False)
 
         assert (
             db_session.query(BatteryType)
@@ -205,7 +205,7 @@ class TestValidation:
         path = _write_fleet_json(tmp_path, data)
 
         with pytest.warns(UserWarning, match="charging topology"):
-            init_fleet(scenario, path, delete_existing_data=False)
+            complete_fleet(scenario, path, delete_existing_data=False)
 
         assert (
             db_session.query(ChargingPointType)
@@ -222,7 +222,7 @@ class TestValidation:
         path = _write_fleet_json(tmp_path, data)
 
         with pytest.warns(UserWarning, match="chemistry"):
-            init_fleet(scenario, path, delete_existing_data=False)
+            complete_fleet(scenario, path, delete_existing_data=False)
 
         assert (
             db_session.query(BatteryType)
@@ -239,7 +239,7 @@ class TestValidation:
         path = _write_fleet_json(tmp_path, data)
 
         with pytest.warns(UserWarning, match="specific_mass"):
-            init_fleet(scenario, path, delete_existing_data=False)
+            complete_fleet(scenario, path, delete_existing_data=False)
 
         assert (
             db_session.query(BatteryType)
@@ -258,7 +258,7 @@ class TestValidation:
         path = _write_fleet_json(tmp_path, data)
 
         with pytest.warns(UserWarning, match="same 'type'"):
-            init_fleet(scenario, path, delete_existing_data=False)
+            complete_fleet(scenario, path, delete_existing_data=False)
 
         assert (
             db_session.query(ChargingPointType)
@@ -290,7 +290,7 @@ class TestExistingData:
         path = _write_fleet_json(tmp_path, _full_fleet_dict())
 
         with pytest.warns(UserWarning, match="Existing BatteryType"):
-            init_fleet(scenario, path, delete_existing_data=False)
+            complete_fleet(scenario, path, delete_existing_data=False)
 
         # Pre-existing row untouched, no new rows created.
         bts = (
@@ -337,7 +337,7 @@ class TestExistingData:
 
         path = _write_fleet_json(tmp_path, _full_fleet_dict())
 
-        init_fleet(scenario, path, delete_existing_data=True)
+        complete_fleet(scenario, path, delete_existing_data=True)
 
         # Exactly 3 BatteryType + 2 ChargingPointType rows now exist for this scenario.
         bts = (
@@ -378,7 +378,7 @@ class TestScenarioResolution:
     def test_invalid_scenario_type_raises(self, tmp_path: Path) -> None:
         path = _write_fleet_json(tmp_path, _full_fleet_dict())
         with pytest.raises(ValueError, match="Scenario object"):
-            init_fleet("not-a-scenario", path, delete_existing_data=False)
+            complete_fleet("not-a-scenario", path, delete_existing_data=False)
 
     def test_int_without_database_url_raises(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -386,7 +386,7 @@ class TestScenarioResolution:
         monkeypatch.delenv("DATABASE_URL", raising=False)
         path = _write_fleet_json(tmp_path, _full_fleet_dict())
         with pytest.raises(ValueError, match="No database URL"):
-            init_fleet(SCENARIO_ID, path, delete_existing_data=False)
+            complete_fleet(SCENARIO_ID, path, delete_existing_data=False)
 
     def test_unbound_scenario_raises(
         self, db_session: Session, scenario: Scenario, tmp_path: Path
@@ -395,4 +395,4 @@ class TestScenarioResolution:
         db_session.expunge(scenario)
         path = _write_fleet_json(tmp_path, _full_fleet_dict())
         with pytest.raises(ValueError, match="not bound"):
-            init_fleet(scenario, path, delete_existing_data=False)
+            complete_fleet(scenario, path, delete_existing_data=False)

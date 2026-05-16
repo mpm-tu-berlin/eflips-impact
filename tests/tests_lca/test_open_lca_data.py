@@ -2,7 +2,7 @@
 
 Covers:
 1. ``YearSeries`` interpolation (exact, between, clamping, single point)
-2. ``OpenLcaData`` dict roundtrip and ``from_json_lca``
+2. ``OpenLCAData`` dict roundtrip and ``from_json_lca``
 3. Population logic
 """
 
@@ -15,15 +15,15 @@ import pytest
 
 from eflips.impact.lca.open_lca_data import (
     ChargingPointTypeOverrides,
-    OpenLcaData,
+    OpenLCAData,
     VehicleTypeOverrides,
     YearSeries,
     init_lca_params,
-    populate_lca_params_from_data,
+    populate_lca_parameters_from_data,
 )
 from eflips.impact.lca.util import DefaultImpactVector
 
-DEFAULTS_DIR = Path(__file__).parents[2] / "eflips" / "impact" / "defaults" / "example"
+DEFAULTS_DIR = Path(__file__).parent.parent / "data"
 
 # ===================================================================
 # Helpers
@@ -35,9 +35,9 @@ def _iv(gwp: float) -> DefaultImpactVector:
     return DefaultImpactVector(gwp=gwp)
 
 
-def _make_open_lca_data() -> OpenLcaData:
-    """Build a minimal ``OpenLcaData`` for testing."""
-    return OpenLcaData(
+def _make_open_lca_data() -> OpenLCAData:
+    """Build a minimal ``OpenLCAData`` for testing."""
+    return OpenLCAData(
         ecoinvent_version="3.9.1",
         lcia_method_set="EF 3.1",
         description="Test dataset",
@@ -177,12 +177,12 @@ class TestYearSeries:
 
 
 # ===================================================================
-# OpenLcaData JSON roundtrip tests
+# OpenLCAData JSON roundtrip tests
 # ===================================================================
 
 
-class TestOpenLcaDataRoundtrip:
-    """Tests for ``OpenLcaData`` serialization."""
+class TestOpenLCADataRoundtrip:
+    """Tests for ``OpenLCAData`` serialization."""
 
 
 # ===================================================================
@@ -191,72 +191,65 @@ class TestOpenLcaDataRoundtrip:
 
 
 class TestFromJsonLca:
-    """Tests for ``OpenLcaData.from_json_lca``."""
+    """Tests for ``OpenLCAData.from_json_lca``."""
 
-    LCA_JSON = (
-        Path(__file__).parent.parent.parent
-        / "eflips"
-        / "impact"
-        / "defaults"
-        / "example"
-        / "lca.json"
-    )
+    LCA_JSON = Path(__file__).parent.parent / "data" / "lca.json"
 
     def test_loads_without_error(self) -> None:
-        """File parses and constructs an OpenLcaData."""
-        d = OpenLcaData.from_json_lca(self.LCA_JSON)
+        """File parses and constructs an OpenLCAData."""
+        d = OpenLCAData.from_json_lca(self.LCA_JSON)
         assert d is not None
 
     def test_metadata(self) -> None:
         """Metadata fields are populated from the metadata section."""
-        d = OpenLcaData.from_json_lca(self.LCA_JSON)
+        d = OpenLCAData.from_json_lca(self.LCA_JSON)
         assert d.ecoinvent_version == "3.9.1"
         assert d.lcia_method_set == "EF 3.1"
 
     def test_chassis_matches_bus_results(self) -> None:
         """chassis_per_kg is copied verbatim from the source."""
-        d = OpenLcaData.from_json_lca(self.LCA_JSON)
+        d = OpenLCAData.from_json_lca(self.LCA_JSON)
         assert d.chassis_per_kg.gwp == pytest.approx(7.1450240595)
 
     def test_lfp_battery_sums_production_and_eol(self) -> None:
         """lfp_battery_per_kg = production + eol_transport + eol_disassembly."""
-        d = OpenLcaData.from_json_lca(self.LCA_JSON)
+        d = OpenLCAData.from_json_lca(self.LCA_JSON)
         expected_gwp = 14.3224443242 + 0.6391297263 + (-0.2070739303)
         assert d.lfp_battery_per_kg.gwp == pytest.approx(expected_gwp)
 
     def test_nmc_battery_sums_production_and_eol(self) -> None:
         """nmc_battery_per_kg = production + eol_transport + eol_disassembly."""
-        d = OpenLcaData.from_json_lca(self.LCA_JSON)
+        d = OpenLCAData.from_json_lca(self.LCA_JSON)
         expected_gwp = 20.1705783869 + 0.6391297263 + (-0.1142217733)
         assert d.nmc_battery_per_kg.gwp == pytest.approx(expected_gwp)
 
     def test_electricity_converted_to_per_kwh(self) -> None:
         """Electricity values are multiplied by 3.6 (MJ → kWh)."""
-        d = OpenLcaData.from_json_lca(self.LCA_JSON)
+        d = OpenLCAData.from_json_lca(self.LCA_JSON)
         assert d.electricity_per_kwh.at_year(2023).gwp == pytest.approx(
             0.1353671996 * 3.6
         )
 
     def test_electricity_year_series_has_three_years(self) -> None:
         """All three years (2023, 2030, 2050) are present."""
-        d = OpenLcaData.from_json_lca(self.LCA_JSON)
+        d = OpenLCAData.from_json_lca(self.LCA_JSON)
         assert set(d.electricity_per_kwh.data.keys()) == {2023, 2030, 2050}
 
     def test_control_unit_sums_production_and_eol(self) -> None:
         """control_unit = production + EoL."""
-        d = OpenLcaData.from_json_lca(self.LCA_JSON)
+        d = OpenLCAData.from_json_lca(self.LCA_JSON)
         expected_gwp = 1345.9444964049 + (-695.6806515338)
         assert d.control_unit.gwp == pytest.approx(expected_gwp)
 
     def test_power_unit_sums_production_and_eol(self) -> None:
         """power_unit = production + EoL."""
-        d = OpenLcaData.from_json_lca(self.LCA_JSON)
+        d = OpenLCAData.from_json_lca(self.LCA_JSON)
         expected_gwp = 6103.5150927163 + (-1586.3434417575)
         assert d.power_unit.gwp == pytest.approx(expected_gwp)
 
     def test_infrastructure_scalars(self) -> None:
         """Ref-power scalars and battery lifetime are read correctly."""
-        d = OpenLcaData.from_json_lca(self.LCA_JSON)
+        d = OpenLCAData.from_json_lca(self.LCA_JSON)
         assert d.power_unit_rated_power_kw == pytest.approx(350.0)
         assert d.transformer_ref_power_kw == pytest.approx(315.0)
         assert d.battery_lifetime_years == pytest.approx(8.0)
@@ -269,10 +262,10 @@ class TestFromJsonLca:
 
 
 class TestPopulationLogic:
-    """Tests for ``populate_lca_params_from_data``."""
+    """Tests for ``populate_lca_parameters_from_data``."""
 
     def test_populate_from_data(self, db_session: pytest.fixture) -> None:  # type: ignore[type-arg]
-        """Populating from OpenLcaData writes expected lca_params."""
+        """Populating from OpenLCAData writes expected lca_parameters."""
         from eflips.model import VehicleType
 
         data = _make_open_lca_data()
@@ -297,7 +290,7 @@ class TestPopulationLogic:
             ),
         }
 
-        populate_lca_params_from_data(
+        populate_lca_parameters_from_data(
             session=db_session,
             scenario_id=1,
             open_lca_data=data,
@@ -310,8 +303,8 @@ class TestPopulationLogic:
         )
 
         vtype = db_session.query(VehicleType).filter_by(id=12).one()
-        assert vtype.lca_params is not None
-        params = vtype.lca_params
+        assert vtype.lca_parameters is not None
+        params = vtype.lca_parameters
         # Chassis EF should match openLCA data
         assert params["chassis_emission_factors_per_kg"]["gwp"] == pytest.approx(10.0)
         # Motor EF should match
@@ -339,7 +332,7 @@ class TestPopulationLogic:
             ),
         }
 
-        populate_lca_params_from_data(
+        populate_lca_parameters_from_data(
             session=db_session,
             scenario_id=1,
             open_lca_data=data,
@@ -352,9 +345,9 @@ class TestPopulationLogic:
         )
 
         vtype = db_session.query(VehicleType).filter_by(id=12).one()
-        assert vtype.lca_params is not None
+        assert vtype.lca_parameters is not None
         expected_gwp = 0.4 * (1 - 0.4) + 0.3 * 0.4  # = 0.36
-        assert vtype.lca_params["electricity_emission_factors_per_kwh"][
+        assert vtype.lca_parameters["electricity_emission_factors_per_kwh"][
             "gwp"
         ] == pytest.approx(expected_gwp)
 
@@ -373,7 +366,7 @@ class TestPopulationLogic:
 
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            populate_lca_params_from_data(
+            populate_lca_parameters_from_data(
                 session=db_session,
                 scenario_id=1,
                 open_lca_data=data,
@@ -395,9 +388,9 @@ class TestPopulationLogic:
         assert warned_name_shorts == missing_name_shorts
 
     def test_zero_transformer_concrete_warns(self) -> None:
-        """make_charging_point_type_lca_params warns when transformer or concrete_per_m3 are zero."""
+        """make_charging_point_type_lca_parameters warns when transformer or concrete_per_m3 are zero."""
         data = _make_open_lca_data()
-        data = OpenLcaData(
+        data = OpenLCAData(
             **{
                 **data.__dict__,
                 "transformer": DefaultImpactVector.zero(),
@@ -407,7 +400,7 @@ class TestPopulationLogic:
 
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            data.make_charging_point_type_lca_params(
+            data.make_charging_point_type_lca_parameters(
                 ChargingPointTypeOverrides(
                     infrastructure_lifetime_years=20.0,
                     foundation_volume_per_point_m3=3.96,
@@ -421,35 +414,35 @@ class TestPopulationLogic:
         assert any("concrete" in msg for msg in user_warnings)
 
     def test_cpt_overrides_applied(self) -> None:
-        """make_charging_point_type_lca_params applies ChargingPointTypeOverrides."""
+        """make_charging_point_type_lca_parameters applies ChargingPointTypeOverrides."""
         data = _make_open_lca_data()
         overrides = ChargingPointTypeOverrides(
             infrastructure_lifetime_years=25.0,
             foundation_volume_per_point_m3=5.0,
         )
-        params = data.make_charging_point_type_lca_params(overrides)
+        params = data.make_charging_point_type_lca_parameters(overrides)
         assert params.infrastructure_lifetime_years == pytest.approx(25.0)
         assert params.foundation_volume_per_point_m3 == pytest.approx(5.0)
 
     def test_cpt_overrides_values_used(self) -> None:
-        """make_charging_point_type_lca_params uses the values from ChargingPointTypeOverrides."""
+        """make_charging_point_type_lca_parameters uses the values from ChargingPointTypeOverrides."""
         data = _make_open_lca_data()
         overrides = ChargingPointTypeOverrides(
             infrastructure_lifetime_years=15.0,
             foundation_volume_per_point_m3=0.0,
         )
-        params = data.make_charging_point_type_lca_params(overrides)
+        params = data.make_charging_point_type_lca_parameters(overrides)
         assert params.infrastructure_lifetime_years == pytest.approx(15.0)
         assert params.foundation_volume_per_point_m3 == pytest.approx(0.0)
 
 
-class TestInitLcaParams:
+class TestInitLCAParams:
     """Tests for ``init_lca_params``."""
 
-    def test_writes_all_entity_lca_params(
+    def test_writes_all_entity_lca_parameters(
         self, db_session: pytest.fixture  # type: ignore[type-arg]
     ) -> None:
-        """init_lca_params writes lca_params to VehicleType, BatteryType, and CPT."""
+        """init_lca_params writes lca_parameters to VehicleType, BatteryType, and CPT."""
         from eflips.model import BatteryType, ChargingPointType, VehicleType
 
         from tests.tests_lca.conftest import SCENARIO_ID
@@ -469,18 +462,18 @@ class TestInitLcaParams:
         vtypes = db_session.query(VehicleType).filter_by(scenario_id=SCENARIO_ID).all()
         for vt in vtypes:
             assert (
-                vt.lca_params is not None
-            ), f"VehicleType {vt.name_short!r} has no lca_params"
+                vt.lca_parameters is not None
+            ), f"VehicleType {vt.name_short!r} has no lca_parameters"
 
         bt = db_session.query(BatteryType).filter_by(scenario_id=SCENARIO_ID).first()
-        assert bt is not None and bt.lca_params is not None
+        assert bt is not None and bt.lca_parameters is not None
 
         cpt = (
             db_session.query(ChargingPointType)
             .filter_by(scenario_id=SCENARIO_ID)
             .first()
         )
-        assert cpt is not None and cpt.lca_params is not None
+        assert cpt is not None and cpt.lca_parameters is not None
 
     def test_vehicle_type_override_values_applied(
         self, db_session: pytest.fixture  # type: ignore[type-arg]
@@ -508,7 +501,9 @@ class TestInitLcaParams:
             .filter_by(scenario_id=SCENARIO_ID, name_short="EN")
             .one()
         )
-        assert en.lca_params["average_consumption_kwh_per_km"] == pytest.approx(1.48)
+        assert en.lca_parameters["average_consumption_kwh_per_km"] == pytest.approx(
+            1.48
+        )
 
     def test_cpt_overrides_infrastructure_lifetime(
         self, db_session: pytest.fixture  # type: ignore[type-arg]
@@ -537,7 +532,9 @@ class TestInitLcaParams:
         )
         assert cpt is not None
         # lca_overrides.json sets infrastructure_lifetime_years: 20.0
-        assert cpt.lca_params["infrastructure_lifetime_years"] == pytest.approx(20.0)
+        assert cpt.lca_parameters["infrastructure_lifetime_years"] == pytest.approx(
+            20.0
+        )
 
     def test_missing_beb_override_warns_and_returns(
         self, db_session: pytest.fixture, tmp_path: Path  # type: ignore[type-arg]
@@ -585,4 +582,4 @@ class TestInitLcaParams:
         user_warnings = [
             str(w.message) for w in caught if issubclass(w.category, UserWarning)
         ]
-        assert any("lca_params will not be written" in msg for msg in user_warnings)
+        assert any("lca_parameters will not be written" in msg for msg in user_warnings)

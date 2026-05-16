@@ -4,7 +4,8 @@
     "ecoinvent_version": "3.9.1",
     "lcia_method_set": "EF 3.1",
     "description": "Filled strictly from bus_results.json",
-    "created_at": "2026-05-05T00:00:00Z"
+    "created_at": "2026-05-05T00:00:00Z",
+    "eta_avail": 0.9
   },
   "vehicle_production": {
     "chassis_per_kg": {
@@ -37,9 +38,7 @@
       "fuel": 2002.9892693572,
       "water": 38.6406873115
     },
-    "diesel_motor_mass_kg": 1900,
-    "motor_power_to_weight_ratio_kw_per_kg": null,
-    "vehicle_lifetime_years": 12
+    "diesel_motor_mass_kg": 1900
   },
   "battery": {
     "lfp_production_per_kg": {

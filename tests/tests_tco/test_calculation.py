@@ -10,7 +10,6 @@ from eflips.impact.tco.calculation import TCOCalculator
 from eflips.impact.tco import calculate_tco
 from eflips.impact.tco.cost_items import CapexItemType, OpexItemType
 
-
 # ---------------------------------------------------------------------------
 # TCOCalculator — basic sanity
 # ---------------------------------------------------------------------------

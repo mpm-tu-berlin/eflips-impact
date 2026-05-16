@@ -9,7 +9,7 @@ from eflips.impact.tco.cost_items import CapexItemType, OpexItemType
 
 
 @dataclass
-class VehicleTypeTCOParameter:
+class VehicleTypeTCOParams:
     """TCO parameters for a vehicle type."""
 
     name_short: str
@@ -41,7 +41,7 @@ class VehicleTypeTCOParameter:
         return d
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "VehicleTypeTCOParameter":
+    def from_dict(cls, d: Dict[str, Any]) -> "VehicleTypeTCOParams":
         return cls(
             name_short=d["name_short"],
             useful_life=int(d["useful_life"]),
@@ -54,12 +54,12 @@ class VehicleTypeTCOParameter:
 
 
 @dataclass
-class BatteryTypeTCOParameter:
+class BatteryTypeTCOParams:
     """TCO parameters for a battery type.
 
     Used to write ``BatteryType.tco_parameters`` on rows that already exist in
     the database. BatteryType row creation has moved to
-    :func:`eflips.impact.utils.fleet_init.init_fleet`; ``specific_mass`` and
+    :func:`eflips.impact.utils.fleet_init.complete_fleet`; ``specific_mass`` and
     ``chemistry`` are no longer fields here.
     """
 
@@ -76,7 +76,7 @@ class BatteryTypeTCOParameter:
         }
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "BatteryTypeTCOParameter":
+    def from_dict(cls, d: Dict[str, Any]) -> "BatteryTypeTCOParams":
         return cls(
             vehicle_name_short=d["vehicle_name_short"],
             procurement_cost=float(d["procurement_cost"]),
@@ -86,12 +86,12 @@ class BatteryTypeTCOParameter:
 
 
 @dataclass
-class ChargingPointTypeTCOParameter:
+class ChargingPointTypeTCOParams:
     """TCO parameters for a charging point type.
 
     Used to write ``ChargingPointType.tco_parameters`` on rows that already
     exist in the database. ChargingPointType row creation has moved to
-    :func:`eflips.impact.utils.fleet_init.init_fleet`; ``name`` is no longer
+    :func:`eflips.impact.utils.fleet_init.complete_fleet`; ``name`` is no longer
     a field here.
     """
 
@@ -108,7 +108,7 @@ class ChargingPointTypeTCOParameter:
         }
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "ChargingPointTypeTCOParameter":
+    def from_dict(cls, d: Dict[str, Any]) -> "ChargingPointTypeTCOParams":
         return cls(
             type=d["type"],
             procurement_cost=float(d["procurement_cost"]),
@@ -118,7 +118,7 @@ class ChargingPointTypeTCOParameter:
 
 
 @dataclass
-class ChargingInfrastructureTCOParameter:
+class ChargingInfrastructureTCOParams:
     """TCO parameters for charging infrastructure."""
 
     type: str
@@ -134,7 +134,7 @@ class ChargingInfrastructureTCOParameter:
         }
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "ChargingInfrastructureTCOParameter":
+    def from_dict(cls, d: Dict[str, Any]) -> "ChargingInfrastructureTCOParams":
         return cls(
             type=d["type"],
             procurement_cost=float(d["procurement_cost"]),
@@ -144,7 +144,7 @@ class ChargingInfrastructureTCOParameter:
 
 
 @dataclass
-class ScenarioTCOParameter:
+class ScenarioTCOParams:
     """TCO parameters for a scenario.
 
     Format follows eflips-opt transition planning convention.
@@ -156,7 +156,7 @@ class ScenarioTCOParameter:
     - vehicle_maint_cost: dict with "diesel" and "electricity" keys (EUR/km)
     - infra_maint_cost: annual infrastructure maintenance per charging point
     - cost_escalation_rate: dict with "general", "staff", "diesel", "electricity",
-      "insurance" keys (annual rate)
+    "insurance" keys (annual rate)
     - insurance: annual insurance per vehicle
     - taxes: annual taxes per vehicle
 
@@ -185,7 +185,7 @@ class ScenarioTCOParameter:
         return {k: v for k, v in d.items() if v is not None}
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "ScenarioTCOParameter":
+    def from_dict(cls, d: Dict[str, Any]) -> "ScenarioTCOParams":
         return cls(**d)
 
 
@@ -208,12 +208,16 @@ class TCOResult:
     @property
     def total_capex(self) -> float:
         """Total CAPEX (NPV) over the project duration in EUR."""
-        return sum(v for k, v in self.tco_by_type.items() if isinstance(k, CapexItemType))
+        return sum(
+            v for k, v in self.tco_by_type.items() if isinstance(k, CapexItemType)
+        )
 
     @property
     def total_opex(self) -> float:
         """Total OPEX (NPV) over the project duration in EUR."""
-        return sum(v for k, v in self.tco_by_type.items() if isinstance(k, OpexItemType))
+        return sum(
+            v for k, v in self.tco_by_type.items() if isinstance(k, OpexItemType)
+        )
 
     @property
     def tco_over_project_duration(self) -> float:
@@ -223,15 +227,21 @@ class TCOResult:
     @property
     def tco_per_vehicle_km(self) -> float:
         """Specific TCO in EUR per total vehicle-km."""
-        return self.tco_over_project_duration / (self.annual_vehicle_km * self.project_duration)
+        return self.tco_over_project_duration / (
+            self.annual_vehicle_km * self.project_duration
+        )
 
     @property
     def tco_per_revenue_km(self) -> float:
         """Specific TCO in EUR per revenue-km."""
-        return self.tco_over_project_duration / (self.annual_revenue_km * self.project_duration)
+        return self.tco_over_project_duration / (
+            self.annual_revenue_km * self.project_duration
+        )
 
     @property
-    def tco_by_type_per_vehicle_km(self) -> Dict[Union[CapexItemType, OpexItemType], float]:
+    def tco_by_type_per_vehicle_km(
+        self,
+    ) -> Dict[Union[CapexItemType, OpexItemType], float]:
         """TCO per vehicle-km by cost category (EUR/km).
 
         :returns: Dict mapping each cost category to EUR per total vehicle-km.
@@ -240,7 +250,9 @@ class TCOResult:
         return {k: v / total_km for k, v in self.tco_by_type.items()}
 
     @property
-    def tco_by_type_per_revenue_km(self) -> Dict[Union[CapexItemType, OpexItemType], float]:
+    def tco_by_type_per_revenue_km(
+        self,
+    ) -> Dict[Union[CapexItemType, OpexItemType], float]:
         """TCO per revenue-km by cost category (EUR/km).
 
         :returns: Dict mapping each cost category to EUR per revenue-km.
@@ -315,7 +327,7 @@ class TCOResult:
 
 
 @dataclass
-class TcoParamSet:
+class TCOParamSet:
     """All TCO parameters for a scenario, loadable from a JSON file.
 
     Bundles the five parameter lists consumed by :func:`init_tco_parameters`.
@@ -329,48 +341,46 @@ class TcoParamSet:
     :ivar charging_infrastructure: Per-charging-infrastructure parameters.
     """
 
-    scenario: ScenarioTCOParameter
-    vehicle_types: List[VehicleTypeTCOParameter]
-    battery_types: List[BatteryTypeTCOParameter]
-    charging_point_types: List[ChargingPointTypeTCOParameter]
-    charging_infrastructure: List[ChargingInfrastructureTCOParameter]
+    scenario: ScenarioTCOParams
+    vehicle_types: List[VehicleTypeTCOParams]
+    battery_types: List[BatteryTypeTCOParams]
+    charging_point_types: List[ChargingPointTypeTCOParams]
+    charging_infrastructure: List[ChargingInfrastructureTCOParams]
 
     @classmethod
-    def from_json(cls, path: Union[str, Path]) -> "TcoParamSet":
-        """Load a ``TcoParamSet`` from a JSON file.
+    def from_json(cls, path: Union[str, Path]) -> "TCOParamSet":
+        """Load a ``TCOParamSet`` from a JSON file.
 
         :param path: Path to the JSON file.
-        :returns: A ``TcoParamSet`` instance.
+        :returns: A ``TCOParamSet`` instance.
         """
         with open(path, "r", encoding="utf-8") as f:
             raw = json.load(f)
         return cls._from_raw(raw)
 
     @classmethod
-    def _from_raw(cls, raw: Dict[str, Any]) -> "TcoParamSet":
-        """Construct a ``TcoParamSet`` from a parsed JSON dict.
+    def _from_raw(cls, raw: Dict[str, Any]) -> "TCOParamSet":
+        """Construct a ``TCOParamSet`` from a parsed JSON dict.
 
         :param raw: Dict with keys ``scenario``, ``vehicle_types``,
             ``battery_types``, ``charging_point_types``,
             ``charging_infrastructure``.
-        :returns: A ``TcoParamSet`` instance.
+        :returns: A ``TCOParamSet`` instance.
         """
         return cls(
-            scenario=ScenarioTCOParameter.from_dict(raw["scenario"]),
+            scenario=ScenarioTCOParams.from_dict(raw["scenario"]),
             vehicle_types=[
-                VehicleTypeTCOParameter.from_dict(d)
-                for d in raw.get("vehicle_types", [])
+                VehicleTypeTCOParams.from_dict(d) for d in raw.get("vehicle_types", [])
             ],
             battery_types=[
-                BatteryTypeTCOParameter.from_dict(d)
-                for d in raw.get("battery_types", [])
+                BatteryTypeTCOParams.from_dict(d) for d in raw.get("battery_types", [])
             ],
             charging_point_types=[
-                ChargingPointTypeTCOParameter.from_dict(d)
+                ChargingPointTypeTCOParams.from_dict(d)
                 for d in raw.get("charging_point_types", [])
             ],
             charging_infrastructure=[
-                ChargingInfrastructureTCOParameter.from_dict(d)
+                ChargingInfrastructureTCOParams.from_dict(d)
                 for d in raw.get("charging_infrastructure", [])
             ],
         )
