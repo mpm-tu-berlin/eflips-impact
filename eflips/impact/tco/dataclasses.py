@@ -156,7 +156,7 @@ class ScenarioTCOParams:
     - vehicle_maint_cost: dict with "diesel" and "electricity" keys (EUR/km)
     - infra_maint_cost: annual infrastructure maintenance per charging point
     - cost_escalation_rate: dict with "general", "staff", "diesel", "electricity",
-      "insurance" keys (annual rate)
+    "insurance" keys (annual rate)
     - insurance: annual insurance per vehicle
     - taxes: annual taxes per vehicle
 
@@ -208,12 +208,16 @@ class TCOResult:
     @property
     def total_capex(self) -> float:
         """Total CAPEX (NPV) over the project duration in EUR."""
-        return sum(v for k, v in self.tco_by_type.items() if isinstance(k, CapexItemType))
+        return sum(
+            v for k, v in self.tco_by_type.items() if isinstance(k, CapexItemType)
+        )
 
     @property
     def total_opex(self) -> float:
         """Total OPEX (NPV) over the project duration in EUR."""
-        return sum(v for k, v in self.tco_by_type.items() if isinstance(k, OpexItemType))
+        return sum(
+            v for k, v in self.tco_by_type.items() if isinstance(k, OpexItemType)
+        )
 
     @property
     def tco_over_project_duration(self) -> float:
@@ -223,15 +227,21 @@ class TCOResult:
     @property
     def tco_per_vehicle_km(self) -> float:
         """Specific TCO in EUR per total vehicle-km."""
-        return self.tco_over_project_duration / (self.annual_vehicle_km * self.project_duration)
+        return self.tco_over_project_duration / (
+            self.annual_vehicle_km * self.project_duration
+        )
 
     @property
     def tco_per_revenue_km(self) -> float:
         """Specific TCO in EUR per revenue-km."""
-        return self.tco_over_project_duration / (self.annual_revenue_km * self.project_duration)
+        return self.tco_over_project_duration / (
+            self.annual_revenue_km * self.project_duration
+        )
 
     @property
-    def tco_by_type_per_vehicle_km(self) -> Dict[Union[CapexItemType, OpexItemType], float]:
+    def tco_by_type_per_vehicle_km(
+        self,
+    ) -> Dict[Union[CapexItemType, OpexItemType], float]:
         """TCO per vehicle-km by cost category (EUR/km).
 
         :returns: Dict mapping each cost category to EUR per total vehicle-km.
@@ -240,7 +250,9 @@ class TCOResult:
         return {k: v / total_km for k, v in self.tco_by_type.items()}
 
     @property
-    def tco_by_type_per_revenue_km(self) -> Dict[Union[CapexItemType, OpexItemType], float]:
+    def tco_by_type_per_revenue_km(
+        self,
+    ) -> Dict[Union[CapexItemType, OpexItemType], float]:
         """TCO per revenue-km by cost category (EUR/km).
 
         :returns: Dict mapping each cost category to EUR per revenue-km.
@@ -358,12 +370,10 @@ class TCOParamSet:
         return cls(
             scenario=ScenarioTCOParams.from_dict(raw["scenario"]),
             vehicle_types=[
-                VehicleTypeTCOParams.from_dict(d)
-                for d in raw.get("vehicle_types", [])
+                VehicleTypeTCOParams.from_dict(d) for d in raw.get("vehicle_types", [])
             ],
             battery_types=[
-                BatteryTypeTCOParams.from_dict(d)
-                for d in raw.get("battery_types", [])
+                BatteryTypeTCOParams.from_dict(d) for d in raw.get("battery_types", [])
             ],
             charging_point_types=[
                 ChargingPointTypeTCOParams.from_dict(d)

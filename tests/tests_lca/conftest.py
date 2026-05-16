@@ -123,7 +123,9 @@ def db_session(db_engine) -> Generator[Session, None, None]:
         session.add(bt)
         session.flush()
 
-        for vtype in session.query(VehicleType).filter_by(scenario_id=SCENARIO_ID).all():
+        for vtype in (
+            session.query(VehicleType).filter_by(scenario_id=SCENARIO_ID).all()
+        ):
             kwh_per_km, power_kw = _VTYPE_PARAMS[int(vtype.id)]
             vtype.lca_parameters = _beb_vehicle_lca_parameters(kwh_per_km, power_kw)
             vtype.battery_type_id = bt.id

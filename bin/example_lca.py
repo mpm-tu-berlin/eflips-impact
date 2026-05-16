@@ -39,8 +39,10 @@ LCA_OVERRIDES_JSON = _DEFAULTS / "lca_overrides.json"
 # ---------------------------------------------------------------------------
 # Step 1: Init fleet
 # ---------------------------------------------------------------------------
-print("Step 1: Add BatteryType and ChargingPointType data if they are not in the database. "
-      "Skip this step if these information are already in the database.\n")
+print(
+    "Step 1: Add BatteryType and ChargingPointType data if they are not in the database. "
+    "Skip this step if these information are already in the database.\n"
+)
 complete_fleet(
     scenario=SCENARIO_ID,
     filepath=_DEFAULTS / "fleet.json",
@@ -52,8 +54,10 @@ complete_fleet(
 # ---------------------------------------------------------------------------
 # Step 2: populate lca_params via init_lca_params
 # ---------------------------------------------------------------------------
-print("Step 2: running init_lca_params. This will read lca.json and lca_overrides.json, "
-      "and write the resulting lca_parameters to the database. Skip this step if lca_parameters are already in the database.\n")
+print(
+    "Step 2: running init_lca_params. This will read lca.json and lca_overrides.json, "
+    "and write the resulting lca_parameters to the database. Skip this step if lca_parameters are already in the database.\n"
+)
 init_lca_params(
     scenario=SCENARIO_ID,
     lca_json_path=LCA_JSON,

@@ -27,7 +27,11 @@ from eflips.impact.tco.dataclasses import (
     TCOParamSet,
     TCOResult,
 )
-from eflips.impact.utils import create_session, get_scaling_window, get_extraction_window
+from eflips.impact.utils import (
+    create_session,
+    get_scaling_window,
+    get_extraction_window,
+)
 import logging
 
 
@@ -55,7 +59,7 @@ def init_tco_params(
     The JSON file must follow the :class:`~eflips.impact.tco.dataclasses.TCOParamSet`
     structure:
 
-    .. code-block:: json
+    .. code-block:: none
 
         {
           "scenario": { ... },

@@ -76,7 +76,6 @@ class StationSimData:
 # ---------------------------------------------------------------------------
 
 
-
 def _annual_scaling_factor(scaling_window: tuple[datetime, datetime]) -> float:
     """Compute the factor to scale simulation-period values to annual.
 
