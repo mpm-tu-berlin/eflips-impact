@@ -427,12 +427,14 @@ class ChargingPointTypeLCAParams:
 
 
 class LCAScope(Enum):
+    """LCA scope: production/end-of-life or use phase."""
 
     PRODUCTION_AND_EOL = auto()
     USE_PHASE = auto()
 
 
 class ItemType(Enum):
+    """Category of an LCA item: vehicle, battery, infrastructure, or energy."""
 
     VEHICLE = auto()
     BATTERY = auto()
