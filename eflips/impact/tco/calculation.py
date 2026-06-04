@@ -23,9 +23,8 @@ from eflips.impact.utils.extraction import (
     AreaSimData,
     ScenarioSimData,
     StationSimData,
-    _annual_scaling_factor,
+    _default_scaling_factor,
     extract_simulation_data,
-    get_scaling_window,
     get_extraction_window,
 )
 from eflips.impact.tco.cost_items import (
@@ -223,14 +222,13 @@ def _load_capex_items_infrastructure(
 def _calc_energy_consumption_simulated(
     session,
     scenario,
-    scaling_window: tuple[datetime.datetime, datetime.datetime],
+    scaling_factor: float,
 ) -> float:
     """Return total annual energy consumption from simulation SoC data.
 
     :param session: A session object.
     :param scenario: A scenario object.
-    :param scaling_window: ``(start, end)`` pair used to compute the
-        annualisation factor.
+    :param scaling_factor: Annualisation factor (``365.0 / simulation_days``).
     :returns: Total annual energy consumption in kWh.
     """
     result = (
@@ -253,13 +251,13 @@ def _calc_energy_consumption_simulated(
         )
         .one()
     )
-    return result[0] * _annual_scaling_factor(scaling_window)
+    return result[0] * scaling_factor
 
 
 def _calculate_total_driver_hours(
     session,
     scenario,
-    scaling_window: tuple[datetime.datetime, datetime.datetime],
+    scaling_factor: float,
     extraction_window: tuple[datetime.datetime, datetime.datetime],
     annual_hours_per_driver: int = 1600,
     buffer: float = 0.1,
@@ -268,8 +266,7 @@ def _calculate_total_driver_hours(
 
     :param session: A session object.
     :param scenario: A scenario object.
-    :param scaling_window: ``(start, end)`` pair used to compute the
-        annualisation factor.
+    :param scaling_factor: Annualisation factor (``365.0 / simulation_days``).
     :param extraction_window: ``(start, end)`` pair used to filter which events
         are included in the driver hours calculation.
     :param annual_hours_per_driver: Contractual hours per driver per year.
@@ -300,9 +297,7 @@ def _calculate_total_driver_hours(
 
     for event in driving_and_opcharge_events:
         driver_hours += event.time_end - event.time_start
-    annual_driver_hours = (
-        _annual_scaling_factor(scaling_window) * driver_hours.total_seconds() / 3600
-    )
+    annual_driver_hours = scaling_factor * driver_hours.total_seconds() / 3600
 
     number_drivers = (annual_driver_hours * (1 + buffer)) // annual_hours_per_driver
     actual_driver_hours = annual_hours_per_driver * (number_drivers + 1)
@@ -316,7 +311,7 @@ class TCOCalculator:
         self,
         scenario,
         extraction_window: Optional[tuple[datetime.datetime, datetime.datetime]] = None,
-        scaling_window: Optional[tuple[datetime.datetime, datetime.datetime]] = None,
+        scaling_factor: Optional[float] = None,
         database_url: Optional[str] = None,
         energy_consumption_mode: str = "constant",
         capex_items=None,
@@ -329,9 +324,9 @@ class TCOCalculator:
             trips and events are included in cost calculations. If
             ``None``, auto-detected from the earliest and latest event
             times in the scenario.
-        :param scaling_window: ``(start, end)`` pair used to compute the
-            annualisation factor applied to simulation-period values. If
-            ``None``, auto-detected from trip departure times.
+        :param scaling_factor: Annualisation factor (``365.0 / simulation_days``).
+            If ``None``, computed automatically from the earliest and latest
+            trip departure times via ``_default_scaling_factor``.
         :param database_url: SQLAlchemy database URL; falls back to
             ``DATABASE_URL`` environment variable when omitted.
         :param energy_consumption_mode: ``"simulated"`` (use SoC data from DB)
@@ -345,14 +340,16 @@ class TCOCalculator:
                 session.query(Scenario).filter(Scenario.id == scenario.id).one()
             )
 
-            if scaling_window is None:
-                self._scaling_window = get_scaling_window(session, scenario.id)
-            else:
-                self._scaling_window = scaling_window
             if extraction_window is None:
                 self._extraction_window = get_extraction_window(session, scenario.id)
             else:
                 self._extraction_window = extraction_window
+
+            self._scaling_factor: float = (
+                scaling_factor
+                if scaling_factor is not None
+                else _default_scaling_factor(session, scenario.id)
+            )
 
             # Read eta_avail from scenario TCO parameters
             self.eta_avail: float = float(self.scenario.tco_parameters.get("eta_avail"))
@@ -362,7 +359,7 @@ class TCOCalculator:
                 session,
                 int(self.scenario.id),
                 self._extraction_window,
-                self._scaling_window,
+                self._scaling_factor,
                 self.eta_avail,
             )
 
@@ -525,7 +522,7 @@ class TCOCalculator:
 
         # Staff cost
         total_driver_hours = _calculate_total_driver_hours(
-            session, self.scenario, self._scaling_window, self._extraction_window
+            session, self.scenario, self._scaling_factor, self._extraction_window
         )
         list_opex_items.append(
             OpexItem(

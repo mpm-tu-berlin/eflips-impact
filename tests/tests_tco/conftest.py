@@ -161,48 +161,29 @@ def fleet_session(db_session: Session, scenario: Scenario, tmp_path: Path) -> Se
 
 
 @pytest.fixture
-def tco_session(fleet_session: Session, scenario: Scenario) -> Session:
+def tco_session(fleet_session: Session, scenario: Scenario, tmp_path: Path) -> Session:
     """Fleet session with all tco_parameters written via :func:`init_tco_params`."""
     from eflips.impact.tco import init_tco_params
-    from eflips.impact.tco.dataclasses import (
-        BatteryTypeTCOParams,
-        ChargingInfrastructureTCOParams,
-        ChargingPointTypeTCOParams,
-        ScenarioTCOParams,
-        VehicleTypeTCOParams,
-    )
 
-    init_tco_params(
-        scenario,
-        scenario_params=ScenarioTCOParams.from_dict(SCENARIO_TCO_PARAMS),
-        vehicle_type_params=[
-            VehicleTypeTCOParams.from_dict({"name_short": ns, **params})
-            for ns, params in VEHICLE_TYPE_TCO_PARAMS.items()
+    params = {
+        "scenario": SCENARIO_TCO_PARAMS,
+        "vehicle_types": [
+            {"name_short": ns, **p} for ns, p in VEHICLE_TYPE_TCO_PARAMS.items()
         ],
-        battery_type_params=[
-            BatteryTypeTCOParams(
-                vehicle_name_short=ns,
-                procurement_cost=BATTERY_TCO_PARAMS["procurement_cost"],
-                useful_life=BATTERY_TCO_PARAMS["useful_life"],
-                cost_escalation=BATTERY_TCO_PARAMS["cost_escalation"],
-            )
+        "battery_types": [
+            {"vehicle_name_short": ns, **BATTERY_TCO_PARAMS}
             for ns in VEHICLE_TYPE_TCO_PARAMS
         ],
-        charging_point_type_params=[
-            ChargingPointTypeTCOParams.from_dict(
-                {"type": "depot", **DEPOT_CPT_TCO_PARAMS}
-            ),
-            ChargingPointTypeTCOParams.from_dict(
-                {"type": "opportunity", **OPPORTUNITY_CPT_TCO_PARAMS}
-            ),
+        "charging_point_types": [
+            {"type": "depot", **DEPOT_CPT_TCO_PARAMS},
+            {"type": "opportunity", **OPPORTUNITY_CPT_TCO_PARAMS},
         ],
-        charging_infra_params=[
-            ChargingInfrastructureTCOParams.from_dict(
-                {"type": "depot", **DEPOT_STATION_TCO_PARAMS}
-            ),
-            ChargingInfrastructureTCOParams.from_dict(
-                {"type": "station", **OPPORTUNITY_STATION_TCO_PARAMS}
-            ),
+        "charging_infrastructure": [
+            {"type": "depot", **DEPOT_STATION_TCO_PARAMS},
+            {"type": "station", **OPPORTUNITY_STATION_TCO_PARAMS},
         ],
-    )
+    }
+    params_path = tmp_path / "tco_params.json"
+    params_path.write_text(json.dumps(params), encoding="utf-8")
+    init_tco_params(scenario, params_path)
     return fleet_session

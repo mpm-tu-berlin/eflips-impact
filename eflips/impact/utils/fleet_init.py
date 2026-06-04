@@ -66,7 +66,7 @@ class _FleetConfig:
 
 def complete_fleet(
     scenario: Union[Scenario, int, Any],
-    filepath: Path,
+    json_path: Path,
     delete_existing_data: bool,
     database_url: Optional[str] = None,
 ) -> None:
@@ -87,7 +87,7 @@ def complete_fleet(
         object with an ``id`` attribute. For the latter two cases,
         ``database_url`` (or ``$DATABASE_URL``) is used to open a fresh
         session that is committed and closed before return.
-    :param filepath: Path to the ``fleet.json`` file.
+    :param json_path: Path to the ``fleet.json`` file.
     :param delete_existing_data: If ``False`` and any BatteryType or
         ChargingPointType already exists in the scenario, warn and
         return without mutation. If ``True``, NULL the FKs on
@@ -103,7 +103,7 @@ def complete_fleet(
         functions afterwards. ``complete_fleet`` does not auto-clear or warn
         about stale params.
     """
-    config = _load_fleet_config(filepath)
+    config = _load_fleet_config(json_path)
     if config is None:
         return
 

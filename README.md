@@ -126,7 +126,7 @@ from eflips.impact.tco import init_tco_params, calculate_tco
 from eflips.impact.lca import init_lca_params, calculate_lca
 
 # 1. Fleet topology
-complete_fleet(scenario=1, filepath="fleet.json", delete_existing_data=True, database_url=DATABASE_URL)
+complete_fleet(scenario=1, json_path="fleet.json", delete_existing_data=True, database_url=DATABASE_URL)
 
 # 2a. TCO parameters
 init_tco_params(scenario=1, json_path="tco.json", database_url=DATABASE_URL)

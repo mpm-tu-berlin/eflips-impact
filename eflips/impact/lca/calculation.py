@@ -560,7 +560,7 @@ def calculate_terminal_station_emissions(
 def calculate_lca(
     scenario: Union[Scenario, int, Any],
     extraction_window: Optional[tuple[datetime, datetime]] = None,
-    scaling_window: Optional[tuple[datetime, datetime]] = None,
+    scaling_factor: Optional[float] = None,
     eta_avail: float = 0.9,
     database_url: Optional[str] = None,
 ) -> LCAResult:
@@ -576,16 +576,20 @@ def calculate_lca(
         and events are included in the query.  If ``None``, derived
         automatically via
         :func:`~eflips.impact.utils.extraction.get_extraction_window`.
-    :param scaling_window: ``(start, end)`` pair used to compute the
-        annualisation factor.  If ``None``, derived automatically via
-        :func:`~eflips.impact.utils.extraction.get_scaling_window`.
+    :param scaling_factor: Annualisation factor (``365.0 / simulation_days``).
+        If ``None``, computed automatically from the earliest and latest trip
+        departure times via
+        :func:`~eflips.impact.utils.extraction._default_scaling_factor`.
     :param eta_avail: Technical availability factor (default ``0.9``).
     :param database_url: Database URL; falls back to ``$DATABASE_URL`` when
         ``scenario`` is not already bound to a session.
     :returns: An ``LCAResult`` with per-revenue-km emissions.
     :raises ValueError: If ``lca_parameters`` are missing on required entities.
     """
-    from eflips.impact.utils.extraction import get_extraction_window, get_scaling_window
+    from eflips.impact.utils.extraction import (
+        _default_scaling_factor,
+        get_extraction_window,
+    )
     from eflips.impact.utils.session import create_session
 
     with create_session(scenario, database_url) as (session, scenario_obj):
@@ -596,14 +600,14 @@ def calculate_lca(
             if extraction_window is not None
             else get_extraction_window(session, scenario_id)
         )
-        sw = (
-            scaling_window
-            if scaling_window is not None
-            else get_scaling_window(session, scenario_id)
+        sf = (
+            scaling_factor
+            if scaling_factor is not None
+            else _default_scaling_factor(session, scenario_id)
         )
 
         # 1. Extract simulation data
-        sim_data = extract_simulation_data(session, scenario_id, ew, sw, eta_avail)
+        sim_data = extract_simulation_data(session, scenario_id, ew, sf, eta_avail)
 
         # 2. Per-vehicle-type items
         vehicle_types = (
