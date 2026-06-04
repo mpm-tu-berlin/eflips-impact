@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Check pypi versions
-        uses: mpm-tu-berlin/pyproject-check-version-poetry
+        uses: mpm-tu-berlin/pyproject-check-version-poetry@v4
         id: versioncheck
         with:
           pyproject-path: "./pyproject.toml"    # default value
