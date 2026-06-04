@@ -94,6 +94,43 @@ def _annual_scaling_factor(scaling_window: tuple[datetime, datetime]) -> float:
     return 365.0 / duration_days
 
 
+def _default_scaling_factor(session: Session,
+    scenario_id: int,) -> float:
+    """
+
+    :param session:
+    :param scenario_id:
+    :return:
+    """
+
+    row = session.execute(
+        select(func.min(Trip.departure_time), func.max(Trip.departure_time)).where(
+            Trip.scenario_id == scenario_id
+        )
+    ).one()
+
+    earliest: Optional[datetime] = row[0]
+    latest: Optional[datetime] = row[1]
+
+    if earliest is None or latest is None:
+        raise ValueError(f"Scenario {scenario_id} contains no trips.")
+
+    if earliest == latest:
+        raise ValueError(
+            f"Scenario {scenario_id} has only one unique departure time; "
+            "cannot form a non-degenerate scaling window."
+        )
+
+    duration = latest - earliest
+    duration_days = duration.total_seconds() / 86_400.0
+    if duration_days <= 0:
+        raise ValueError(
+            f"scaling_window end must be after start, got duration {duration}"
+        )
+    return 365.0 / duration_days
+
+
+
 # ---------------------------------------------------------------------------
 # Per-vehicle-type queries
 # ---------------------------------------------------------------------------
@@ -103,7 +140,7 @@ def extract_vehicle_and_revenue_kilometers(
     session: Session,
     scenario_id: int,
     extraction_window: tuple[datetime, datetime],
-    scaling_window: tuple[datetime, datetime],
+    scaling_factor: float,
 ) -> dict[int, tuple[float, float]]:
     """Query annual vehicle-km and revenue-km per vehicle type.
 
@@ -111,13 +148,12 @@ def extract_vehicle_and_revenue_kilometers(
     :param scenario_id: Scenario to query.
     :param extraction_window: ``(start, end)`` pair used to filter trips included
         in the calculation.
-    :param scaling_window: ``(start, end)`` pair used to compute the
-        annualisation factor via :func:`_annual_scaling_factor`.
+    :param scaling_factor: Annualisation factor (``365.0 / simulation_days``).
     :returns: Dict mapping ``VehicleType.id`` to
         ``(annual_vehicle_km, annual_revenue_km)``.
     """
     sim_start_time, sim_end_time = extraction_window
-    scaling = _annual_scaling_factor(scaling_window)
+    scaling = scaling_factor
     stmt = (
         select(
             Rotation.vehicle_type_id,
@@ -313,44 +349,6 @@ def get_extraction_window(
     return earliest, latest
 
 
-def get_scaling_window(
-    session: Session,
-    scenario_id: int,
-) -> tuple[datetime, datetime]:
-    """Return the scaling window for a scenario.
-
-    Queries ``min(Trip.departure_time)`` and ``max(Trip.departure_time)`` for
-    the scenario.  Using departure times for both bounds anchors the reference
-    period to scheduled service, excluding any deadhead or idle time after the
-    last trip departs.  The result is suitable to pass as ``scaling_window``
-    to :func:`extract_vehicle_and_revenue_kilometers` and related functions.
-
-    :param session: SQLAlchemy session.
-    :param scenario_id: Scenario to query.
-    :returns: ``(min_departure_time, max_departure_time)``.
-    :raises ValueError: If the scenario contains no trips, or if all trips share
-        the same departure time (degenerate window).
-    """
-    row = session.execute(
-        select(func.min(Trip.departure_time), func.max(Trip.departure_time)).where(
-            Trip.scenario_id == scenario_id
-        )
-    ).one()
-
-    earliest: Optional[datetime] = row[0]
-    latest: Optional[datetime] = row[1]
-
-    if earliest is None or latest is None:
-        raise ValueError(f"Scenario {scenario_id} contains no trips.")
-
-    if earliest == latest:
-        raise ValueError(
-            f"Scenario {scenario_id} has only one unique departure time; "
-            "cannot form a non-degenerate scaling window."
-        )
-
-    return earliest, latest
-
 
 # ---------------------------------------------------------------------------
 # Aggregated simulation data containers
@@ -395,7 +393,7 @@ def extract_simulation_data(
     session: Session,
     scenario_id: int,
     extraction_window: tuple[datetime, datetime],
-    scaling_window: tuple[datetime, datetime],
+    scaling_factor: float,
     eta_avail: float = 0.9,
 ) -> ScenarioSimData:
     """Extract all simulation outputs needed for LCA and TCO calculations.
@@ -407,14 +405,12 @@ def extract_simulation_data(
     :param scenario_id: ID of the scenario to analyse.
     :param extraction_window: ``(start, end)`` pair used to filter which trips
         and events are included in the query.
-    :param scaling_window: ``(start, end)`` pair used to compute the
-        annualisation factor.
+    :param scaling_factor: Annualisation factor (``365.0 / simulation_days``).
     :param eta_avail: Technical availability factor (default ``0.9``).
     :returns: A :class:`ScenarioSimData` containing all extracted values.
-    :raises ValueError: If either window has non-positive duration.
     """
     km_data = extract_vehicle_and_revenue_kilometers(
-        session, scenario_id, extraction_window, scaling_window
+        session, scenario_id, extraction_window, scaling_factor
     )
     n_ready_data = extract_vehicle_count_per_type(
         session, scenario_id, extraction_window

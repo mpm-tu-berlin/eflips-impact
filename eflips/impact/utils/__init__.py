@@ -18,14 +18,12 @@ from eflips.impact.utils.extraction import (
     ScenarioSimData,
     StationSimData,
     VehicleTypeSimData,
-    _annual_scaling_factor,
     extract_area_peaks,
     extract_simulation_data,
     extract_station_peaks,
     extract_vehicle_and_revenue_kilometers,
     extract_vehicle_count_per_type,
     get_extraction_window,
-    get_scaling_window,
 )
 from eflips.impact.utils.fleet_init import complete_fleet
 from eflips.impact.utils.session import create_session
@@ -35,7 +33,6 @@ __all__ = [
     "ScenarioSimData",
     "StationSimData",
     "VehicleTypeSimData",
-    "_annual_scaling_factor",
     "create_session",
     "extract_area_peaks",
     "extract_simulation_data",
@@ -43,6 +40,5 @@ __all__ = [
     "extract_vehicle_and_revenue_kilometers",
     "extract_vehicle_count_per_type",
     "get_extraction_window",
-    "get_scaling_window",
     "complete_fleet",
 ]

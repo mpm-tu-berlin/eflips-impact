@@ -275,7 +275,7 @@ def calculate_tco(
     scenario: Union[Scenario, int, Any],
     database_url: Optional[str] = None,
     extraction_window: Optional[Tuple[datetime, datetime]] = None,
-    scaling_window: Optional[Tuple[datetime, datetime]] = None,
+    scaling_factor: Optional[float] = None,
 ) -> TCOResult:
     """Calculate the Total Cost of Ownership (TCO) for a given scenario.
 
@@ -285,8 +285,8 @@ def calculate_tco(
         is not a Scenario instance.
     :param extraction_window: Optional time window within which events are extracted.
         If not provided, all events in the scenario are considered.
-    :param scaling_window: Optional time window whose duration is used to scale to
-        an operation year. If not provided, the earliest and latest trip times are used.
+    :param scaling_factor: Annualisation factor (``365.0 / simulation_days``).
+        If not provided, derived from the resolved extraction window.
     :returns: A :class:`TCOResult` with aggregated totals and per-type costs.
         Use :attr:`TCOResult.tco_by_type_per_vehicle_km` or
         :attr:`TCOResult.tco_by_type_per_revenue_km` for normalised breakdowns.
@@ -295,7 +295,7 @@ def calculate_tco(
         scenario,
         database_url=database_url,
         energy_consumption_mode="constant",
-        scaling_window=scaling_window,
+        scaling_factor=scaling_factor,
         extraction_window=extraction_window,
     )
     return tco_calculator.calculate()
