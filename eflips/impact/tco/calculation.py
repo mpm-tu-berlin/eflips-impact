@@ -297,9 +297,7 @@ def _calculate_total_driver_hours(
 
     for event in driving_and_opcharge_events:
         driver_hours += event.time_end - event.time_start
-    annual_driver_hours = (
-        scaling_factor * driver_hours.total_seconds() / 3600
-    )
+    annual_driver_hours = scaling_factor * driver_hours.total_seconds() / 3600
 
     number_drivers = (annual_driver_hours * (1 + buffer)) // annual_hours_per_driver
     actual_driver_hours = annual_hours_per_driver * (number_drivers + 1)

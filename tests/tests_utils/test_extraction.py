@@ -76,7 +76,10 @@ def test_default_scaling_factor_invalid_scenario_raises(db_session: Session) -> 
 def test_vkm_keys_are_vehicle_type_ids(db_session: Session) -> None:
     window = get_extraction_window(db_session, SCENARIO_ID)
     result = extract_vehicle_and_revenue_kilometers(
-        db_session, SCENARIO_ID, window, _default_scaling_factor(db_session, SCENARIO_ID)
+        db_session,
+        SCENARIO_ID,
+        window,
+        _default_scaling_factor(db_session, SCENARIO_ID),
     )
     assert len(result) > 0
     for vtype_id, (vkm, rkm) in result.items():
@@ -87,7 +90,10 @@ def test_vkm_keys_are_vehicle_type_ids(db_session: Session) -> None:
 def test_vkm_revenue_le_vehicle(db_session: Session) -> None:
     window = get_extraction_window(db_session, SCENARIO_ID)
     result = extract_vehicle_and_revenue_kilometers(
-        db_session, SCENARIO_ID, window, _default_scaling_factor(db_session, SCENARIO_ID)
+        db_session,
+        SCENARIO_ID,
+        window,
+        _default_scaling_factor(db_session, SCENARIO_ID),
     )
     for vkm, rkm in result.values():
         assert vkm >= rkm
@@ -129,7 +135,10 @@ def test_vehicle_count_positive(db_session: Session) -> None:
 def test_vehicle_count_keys_match_km_keys(db_session: Session) -> None:
     window = get_extraction_window(db_session, SCENARIO_ID)
     km_result = extract_vehicle_and_revenue_kilometers(
-        db_session, SCENARIO_ID, window, _default_scaling_factor(db_session, SCENARIO_ID)
+        db_session,
+        SCENARIO_ID,
+        window,
+        _default_scaling_factor(db_session, SCENARIO_ID),
     )
     count_result = extract_vehicle_count_per_type(db_session, SCENARIO_ID, window)
     # Every type with trips should also have vehicles

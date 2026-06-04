@@ -94,8 +94,10 @@ def _annual_scaling_factor(scaling_window: tuple[datetime, datetime]) -> float:
     return 365.0 / duration_days
 
 
-def _default_scaling_factor(session: Session,
-    scenario_id: int,) -> float:
+def _default_scaling_factor(
+    session: Session,
+    scenario_id: int,
+) -> float:
     """
 
     :param session:
@@ -128,7 +130,6 @@ def _default_scaling_factor(session: Session,
             f"scaling_window end must be after start, got duration {duration}"
         )
     return 365.0 / duration_days
-
 
 
 # ---------------------------------------------------------------------------
@@ -347,7 +348,6 @@ def get_extraction_window(
         raise ValueError(f"Scenario {scenario_id} contains no events.")
 
     return earliest, latest
-
 
 
 # ---------------------------------------------------------------------------

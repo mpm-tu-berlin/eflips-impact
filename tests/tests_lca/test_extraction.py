@@ -78,7 +78,12 @@ def test_default_scaling_factor_invalid_scenario_raises(db_session: Session) -> 
 
 def test_vehicle_types_present(db_session: Session) -> None:
     window = (SIM_START, SIM_END)
-    data = extract_simulation_data(db_session, SCENARIO_ID, window, _default_scaling_factor(db_session, SCENARIO_ID))
+    data = extract_simulation_data(
+        db_session,
+        SCENARIO_ID,
+        window,
+        _default_scaling_factor(db_session, SCENARIO_ID),
+    )
     # vtype 12 and 13 have rotations; vtype 14 does not
     assert 12 in data.vehicle_type_data
     assert 13 in data.vehicle_type_data
@@ -86,7 +91,12 @@ def test_vehicle_types_present(db_session: Session) -> None:
 
 def test_revenue_km_less_than_vehicle_km(db_session: Session) -> None:
     window = (SIM_START, SIM_END)
-    data = extract_simulation_data(db_session, SCENARIO_ID, window, _default_scaling_factor(db_session, SCENARIO_ID))
+    data = extract_simulation_data(
+        db_session,
+        SCENARIO_ID,
+        window,
+        _default_scaling_factor(db_session, SCENARIO_ID),
+    )
     for vt in data.vehicle_type_data.values():
         assert vt.annual_vehicle_kilometers > 0
         assert vt.annual_revenue_kilometers > 0
@@ -96,7 +106,12 @@ def test_revenue_km_less_than_vehicle_km(db_session: Session) -> None:
 
 def test_n_ready_positive(db_session: Session) -> None:
     window = (SIM_START, SIM_END)
-    data = extract_simulation_data(db_session, SCENARIO_ID, window, _default_scaling_factor(db_session, SCENARIO_ID))
+    data = extract_simulation_data(
+        db_session,
+        SCENARIO_ID,
+        window,
+        _default_scaling_factor(db_session, SCENARIO_ID),
+    )
     for vt in data.vehicle_type_data.values():
         assert vt.n_ready > 0
 
@@ -131,7 +146,12 @@ def test_scaling_halves_km(db_session: Session) -> None:
 
 def test_area_peaks_present(db_session: Session) -> None:
     window = (SIM_START, SIM_END)
-    data = extract_simulation_data(db_session, SCENARIO_ID, window, _default_scaling_factor(db_session, SCENARIO_ID))
+    data = extract_simulation_data(
+        db_session,
+        SCENARIO_ID,
+        window,
+        _default_scaling_factor(db_session, SCENARIO_ID),
+    )
     assert len(data.area_data) > 0
     for area_sim in data.area_data.values():
         assert area_sim.peak_charging_power_kw >= 0.0
@@ -140,7 +160,12 @@ def test_area_peaks_present(db_session: Session) -> None:
 
 def test_beb_area_ids_extracted(db_session: Session) -> None:
     window = (SIM_START, SIM_END)
-    data = extract_simulation_data(db_session, SCENARIO_ID, window, _default_scaling_factor(db_session, SCENARIO_ID))
+    data = extract_simulation_data(
+        db_session,
+        SCENARIO_ID,
+        window,
+        _default_scaling_factor(db_session, SCENARIO_ID),
+    )
     # Areas 5, 6, 11, 12, 17 are the BEB depot areas in the sample scenario
     expected_beb_areas = {5, 6, 11, 12, 17}
     assert expected_beb_areas.issubset(data.area_data.keys())
@@ -148,14 +173,24 @@ def test_beb_area_ids_extracted(db_session: Session) -> None:
 
 def test_area_peak_power_positive(db_session: Session) -> None:
     window = (SIM_START, SIM_END)
-    data = extract_simulation_data(db_session, SCENARIO_ID, window, _default_scaling_factor(db_session, SCENARIO_ID))
+    data = extract_simulation_data(
+        db_session,
+        SCENARIO_ID,
+        window,
+        _default_scaling_factor(db_session, SCENARIO_ID),
+    )
     total_peak = sum(a.peak_charging_power_kw for a in data.area_data.values())
     assert total_peak > 0.0
 
 
 def test_station_peaks_present(db_session: Session) -> None:
     window = (SIM_START, SIM_END)
-    data = extract_simulation_data(db_session, SCENARIO_ID, window, _default_scaling_factor(db_session, SCENARIO_ID))
+    data = extract_simulation_data(
+        db_session,
+        SCENARIO_ID,
+        window,
+        _default_scaling_factor(db_session, SCENARIO_ID),
+    )
     assert len(data.station_data) > 0
     for st_sim in data.station_data.values():
         assert st_sim.peak_charging_power_kw >= 0.0
@@ -163,7 +198,12 @@ def test_station_peaks_present(db_session: Session) -> None:
 
 def test_terminal_station_ids_extracted(db_session: Session) -> None:
     window = (SIM_START, SIM_END)
-    data = extract_simulation_data(db_session, SCENARIO_ID, window, _default_scaling_factor(db_session, SCENARIO_ID))
+    data = extract_simulation_data(
+        db_session,
+        SCENARIO_ID,
+        window,
+        _default_scaling_factor(db_session, SCENARIO_ID),
+    )
     expected = {3104, 62202, 79221, 195014, 260005, 1102005109}
     assert expected.issubset(data.station_data.keys())
 
@@ -171,6 +211,10 @@ def test_terminal_station_ids_extracted(db_session: Session) -> None:
 def test_eta_avail_stored(db_session: Session) -> None:
     window = (SIM_START, SIM_END)
     data = extract_simulation_data(
-        db_session, SCENARIO_ID, window, _default_scaling_factor(db_session, SCENARIO_ID), eta_avail=0.85
+        db_session,
+        SCENARIO_ID,
+        window,
+        _default_scaling_factor(db_session, SCENARIO_ID),
+        eta_avail=0.85,
     )
     assert data.eta_avail == pytest.approx(0.85)

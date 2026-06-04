@@ -54,12 +54,14 @@ def test_vehicle_type_params_written(
 ) -> None:
     params_path = tmp_path / "params.json"
     params_path.write_text(
-        json.dumps({
-            "scenario": SCENARIO_TCO_PARAMS,
-            "vehicle_types": [
-                {"name_short": ns, **p} for ns, p in VEHICLE_TYPE_TCO_PARAMS.items()
-            ],
-        }),
+        json.dumps(
+            {
+                "scenario": SCENARIO_TCO_PARAMS,
+                "vehicle_types": [
+                    {"name_short": ns, **p} for ns, p in VEHICLE_TYPE_TCO_PARAMS.items()
+                ],
+            }
+        ),
         encoding="utf-8",
     )
     init_tco_params(scenario, params_path)
@@ -78,18 +80,20 @@ def test_unknown_vehicle_name_short_warns(
 ) -> None:
     params_path = tmp_path / "params.json"
     params_path.write_text(
-        json.dumps({
-            "scenario": SCENARIO_TCO_PARAMS,
-            "vehicle_types": [
-                {
-                    "name_short": "UNKNOWN_VT",
-                    "useful_life": 10,
-                    "procurement_cost": 100_000.0,
-                    "cost_escalation": 0.0,
-                    "average_electricity_consumption": 1.0,
-                }
-            ],
-        }),
+        json.dumps(
+            {
+                "scenario": SCENARIO_TCO_PARAMS,
+                "vehicle_types": [
+                    {
+                        "name_short": "UNKNOWN_VT",
+                        "useful_life": 10,
+                        "procurement_cost": 100_000.0,
+                        "cost_escalation": 0.0,
+                        "average_electricity_consumption": 1.0,
+                    }
+                ],
+            }
+        ),
         encoding="utf-8",
     )
     with pytest.warns(UserWarning, match="UNKNOWN_VT"):
@@ -106,13 +110,15 @@ def test_battery_type_params_written(
 ) -> None:
     params_path = tmp_path / "params.json"
     params_path.write_text(
-        json.dumps({
-            "scenario": SCENARIO_TCO_PARAMS,
-            "battery_types": [
-                {"vehicle_name_short": ns, **BATTERY_TCO_PARAMS}
-                for ns in VEHICLE_TYPE_TCO_PARAMS
-            ],
-        }),
+        json.dumps(
+            {
+                "scenario": SCENARIO_TCO_PARAMS,
+                "battery_types": [
+                    {"vehicle_name_short": ns, **BATTERY_TCO_PARAMS}
+                    for ns in VEHICLE_TYPE_TCO_PARAMS
+                ],
+            }
+        ),
         encoding="utf-8",
     )
     init_tco_params(scenario, params_path)
@@ -135,17 +141,19 @@ def test_battery_missing_assignment_warns(
     """VehicleType without battery_type_id → skip with UserWarning."""
     params_path = tmp_path / "params.json"
     params_path.write_text(
-        json.dumps({
-            "scenario": SCENARIO_TCO_PARAMS,
-            "battery_types": [
-                {
-                    "vehicle_name_short": "EN",
-                    "procurement_cost": 190.0,
-                    "useful_life": 7,
-                    "cost_escalation": -0.03,
-                }
-            ],
-        }),
+        json.dumps(
+            {
+                "scenario": SCENARIO_TCO_PARAMS,
+                "battery_types": [
+                    {
+                        "vehicle_name_short": "EN",
+                        "procurement_cost": 190.0,
+                        "useful_life": 7,
+                        "cost_escalation": -0.03,
+                    }
+                ],
+            }
+        ),
         encoding="utf-8",
     )
     with pytest.warns(UserWarning, match="no BatteryType assigned"):
@@ -162,13 +170,15 @@ def test_charging_point_type_params_written(
 ) -> None:
     params_path = tmp_path / "params.json"
     params_path.write_text(
-        json.dumps({
-            "scenario": SCENARIO_TCO_PARAMS,
-            "charging_point_types": [
-                {"type": "depot", **DEPOT_CPT_TCO_PARAMS},
-                {"type": "opportunity", **OPPORTUNITY_CPT_TCO_PARAMS},
-            ],
-        }),
+        json.dumps(
+            {
+                "scenario": SCENARIO_TCO_PARAMS,
+                "charging_point_types": [
+                    {"type": "depot", **DEPOT_CPT_TCO_PARAMS},
+                    {"type": "opportunity", **OPPORTUNITY_CPT_TCO_PARAMS},
+                ],
+            }
+        ),
         encoding="utf-8",
     )
     init_tco_params(scenario, params_path)
@@ -190,10 +200,12 @@ def test_missing_cpt_warns(
     """No ChargingPointType rows → skip with UserWarning."""
     params_path = tmp_path / "params.json"
     params_path.write_text(
-        json.dumps({
-            "scenario": SCENARIO_TCO_PARAMS,
-            "charging_point_types": [{"type": "depot", **DEPOT_CPT_TCO_PARAMS}],
-        }),
+        json.dumps(
+            {
+                "scenario": SCENARIO_TCO_PARAMS,
+                "charging_point_types": [{"type": "depot", **DEPOT_CPT_TCO_PARAMS}],
+            }
+        ),
         encoding="utf-8",
     )
     with pytest.warns(UserWarning, match="'depot' ChargingPointType"):
@@ -213,13 +225,15 @@ def test_charging_infra_params_written(
 
     params_path = tmp_path / "params.json"
     params_path.write_text(
-        json.dumps({
-            "scenario": SCENARIO_TCO_PARAMS,
-            "charging_infrastructure": [
-                {"type": "depot", **DEPOT_STATION_TCO_PARAMS},
-                {"type": "station", **OPPORTUNITY_STATION_TCO_PARAMS},
-            ],
-        }),
+        json.dumps(
+            {
+                "scenario": SCENARIO_TCO_PARAMS,
+                "charging_infrastructure": [
+                    {"type": "depot", **DEPOT_STATION_TCO_PARAMS},
+                    {"type": "station", **OPPORTUNITY_STATION_TCO_PARAMS},
+                ],
+            }
+        ),
         encoding="utf-8",
     )
     init_tco_params(scenario, params_path)
@@ -262,17 +276,19 @@ def test_battery_unknown_vehicle_name_short_warns(
     """vehicle_name_short not in DB → skip with warning."""
     params_path = tmp_path / "params.json"
     params_path.write_text(
-        json.dumps({
-            "scenario": SCENARIO_TCO_PARAMS,
-            "battery_types": [
-                {
-                    "vehicle_name_short": "UNKNOWN",
-                    "procurement_cost": 190.0,
-                    "useful_life": 7,
-                    "cost_escalation": -0.03,
-                }
-            ],
-        }),
+        json.dumps(
+            {
+                "scenario": SCENARIO_TCO_PARAMS,
+                "battery_types": [
+                    {
+                        "vehicle_name_short": "UNKNOWN",
+                        "procurement_cost": 190.0,
+                        "useful_life": 7,
+                        "cost_escalation": -0.03,
+                    }
+                ],
+            }
+        ),
         encoding="utf-8",
     )
     with pytest.warns(UserWarning, match="UNKNOWN"):
