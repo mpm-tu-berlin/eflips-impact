@@ -42,7 +42,7 @@ print(
 )
 complete_fleet(
     scenario=SCENARIO_ID,
-    filepath=_DEFAULTS / "fleet.json",
+    json_path=_DEFAULTS / "fleet.json",
     delete_existing_data=True,
     database_url=DATABASE_URL,
 )

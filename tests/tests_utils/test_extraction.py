@@ -9,10 +9,10 @@ from sqlalchemy.orm import Session
 
 from eflips.impact.utils.extraction import (
     _annual_scaling_factor,
+    _default_scaling_factor,
     extract_vehicle_and_revenue_kilometers,
     extract_vehicle_count_per_type,
     get_extraction_window,
-    get_scaling_window,
 )
 
 SCENARIO_ID = 1
@@ -54,14 +54,29 @@ def test_scaling_negative_duration_raises() -> None:
 
 
 # ---------------------------------------------------------------------------
+# _default_scaling_factor
+# ---------------------------------------------------------------------------
+
+
+def test_default_scaling_factor_positive(db_session: Session) -> None:
+    sf = _default_scaling_factor(db_session, SCENARIO_ID)
+    assert sf > 0.0
+
+
+def test_default_scaling_factor_invalid_scenario_raises(db_session: Session) -> None:
+    with pytest.raises(ValueError, match="no trips"):
+        _default_scaling_factor(db_session, 999)
+
+
+# ---------------------------------------------------------------------------
 # extract_vehicle_and_revenue_kilometers
 # ---------------------------------------------------------------------------
 
 
 def test_vkm_keys_are_vehicle_type_ids(db_session: Session) -> None:
-    window = get_scaling_window(db_session, SCENARIO_ID)
+    window = get_extraction_window(db_session, SCENARIO_ID)
     result = extract_vehicle_and_revenue_kilometers(
-        db_session, SCENARIO_ID, window, window
+        db_session, SCENARIO_ID, window, _default_scaling_factor(db_session, SCENARIO_ID)
     )
     assert len(result) > 0
     for vtype_id, (vkm, rkm) in result.items():
@@ -70,25 +85,26 @@ def test_vkm_keys_are_vehicle_type_ids(db_session: Session) -> None:
 
 
 def test_vkm_revenue_le_vehicle(db_session: Session) -> None:
-    window = get_scaling_window(db_session, SCENARIO_ID)
+    window = get_extraction_window(db_session, SCENARIO_ID)
     result = extract_vehicle_and_revenue_kilometers(
-        db_session, SCENARIO_ID, window, window
+        db_session, SCENARIO_ID, window, _default_scaling_factor(db_session, SCENARIO_ID)
     )
     for vkm, rkm in result.values():
         assert vkm >= rkm
 
 
 def test_vkm_scaling_proportional(db_session: Session) -> None:
-    """A half-length scaling window should double the km values vs. the full window."""
-    start, end = get_scaling_window(db_session, SCENARIO_ID)
+    """A half-length scaling factor should double the km values vs. the full factor."""
+    start, end = get_extraction_window(db_session, SCENARIO_ID)
     mid = start + (end - start) / 2
-    half_window = (start, mid)
     full_window = (start, end)
+    sf_full = _annual_scaling_factor(full_window)
+    sf_half = _annual_scaling_factor((start, mid))
     result_full = extract_vehicle_and_revenue_kilometers(
-        db_session, SCENARIO_ID, full_window, full_window
+        db_session, SCENARIO_ID, full_window, sf_full
     )
     result_half_scale = extract_vehicle_and_revenue_kilometers(
-        db_session, SCENARIO_ID, full_window, half_window
+        db_session, SCENARIO_ID, full_window, sf_half
     )
     for vid in result_full:
         vkm_full, rkm_full = result_full[vid]
@@ -103,7 +119,7 @@ def test_vkm_scaling_proportional(db_session: Session) -> None:
 
 
 def test_vehicle_count_positive(db_session: Session) -> None:
-    window = get_scaling_window(db_session, SCENARIO_ID)
+    window = get_extraction_window(db_session, SCENARIO_ID)
     result = extract_vehicle_count_per_type(db_session, SCENARIO_ID, window)
     assert len(result) > 0
     for count in result.values():
@@ -111,9 +127,9 @@ def test_vehicle_count_positive(db_session: Session) -> None:
 
 
 def test_vehicle_count_keys_match_km_keys(db_session: Session) -> None:
-    window = get_scaling_window(db_session, SCENARIO_ID)
+    window = get_extraction_window(db_session, SCENARIO_ID)
     km_result = extract_vehicle_and_revenue_kilometers(
-        db_session, SCENARIO_ID, window, window
+        db_session, SCENARIO_ID, window, _default_scaling_factor(db_session, SCENARIO_ID)
     )
     count_result = extract_vehicle_count_per_type(db_session, SCENARIO_ID, window)
     # Every type with trips should also have vehicles
@@ -155,39 +171,3 @@ def test_extraction_window_end_is_max_event_time(db_session: Session) -> None:
 def test_extraction_window_no_events_raises(db_session: Session) -> None:
     with pytest.raises(ValueError, match="contains no events"):
         get_extraction_window(db_session, 999)
-
-
-# ---------------------------------------------------------------------------
-# get_scaling_window
-# ---------------------------------------------------------------------------
-
-
-def test_scaling_window_start_before_end(db_session: Session) -> None:
-    start, end = get_scaling_window(db_session, SCENARIO_ID)
-    assert start < end
-
-
-def test_scaling_window_both_are_departure_times(db_session: Session) -> None:
-    start, end = get_scaling_window(db_session, SCENARIO_ID)
-    from eflips.model import Trip
-    from sqlalchemy import func, select
-
-    min_dep, max_dep = db_session.execute(
-        select(func.min(Trip.departure_time), func.max(Trip.departure_time)).where(
-            Trip.scenario_id == SCENARIO_ID
-        )
-    ).one()
-    assert start == min_dep
-    assert end == max_dep
-
-
-def test_scaling_window_end_le_extraction_window_end(db_session: Session) -> None:
-    _, ext_end = get_extraction_window(db_session, SCENARIO_ID)
-    _, sc_end = get_scaling_window(db_session, SCENARIO_ID)
-    # Last departure cannot be later than last arrival
-    assert sc_end <= ext_end
-
-
-def test_scaling_window_no_trips_raises(db_session: Session) -> None:
-    with pytest.raises(ValueError, match="contains no trips"):
-        get_scaling_window(db_session, 999)

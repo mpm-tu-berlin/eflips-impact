@@ -3,20 +3,12 @@
 from __future__ import annotations
 
 import json
-import warnings
 from pathlib import Path
 
 import pytest
 from sqlalchemy.orm import Session
 
 from eflips.model import BatteryType, ChargingPointType, Scenario, VehicleType
-from eflips.impact.tco.dataclasses import (
-    BatteryTypeTCOParams,
-    ChargingInfrastructureTCOParams,
-    ChargingPointTypeTCOParams,
-    ScenarioTCOParams,
-    VehicleTypeTCOParams,
-)
 from eflips.impact.tco import init_tco_params
 
 from tests.tests_tco.conftest import (
@@ -38,11 +30,14 @@ DEFAULTS_JSON = Path(__file__).parent.parent / "data" / "tco.json"
 # ---------------------------------------------------------------------------
 
 
-def test_scenario_params_written(fleet_session: Session, scenario: Scenario) -> None:
-    init_tco_params(
-        scenario,
-        scenario_params=ScenarioTCOParams.from_dict(SCENARIO_TCO_PARAMS),
+def test_scenario_params_written(
+    fleet_session: Session, scenario: Scenario, tmp_path: Path
+) -> None:
+    params_path = tmp_path / "params.json"
+    params_path.write_text(
+        json.dumps({"scenario": SCENARIO_TCO_PARAMS}), encoding="utf-8"
     )
+    init_tco_params(scenario, params_path)
     fleet_session.flush()
     fleet_session.refresh(scenario)
     assert scenario.tco_parameters["project_duration"] == 14
@@ -55,15 +50,19 @@ def test_scenario_params_written(fleet_session: Session, scenario: Scenario) -> 
 
 
 def test_vehicle_type_params_written(
-    fleet_session: Session, scenario: Scenario
+    fleet_session: Session, scenario: Scenario, tmp_path: Path
 ) -> None:
-    init_tco_params(
-        scenario,
-        vehicle_type_params=[
-            VehicleTypeTCOParams.from_dict({"name_short": ns, **params})
-            for ns, params in VEHICLE_TYPE_TCO_PARAMS.items()
-        ],
+    params_path = tmp_path / "params.json"
+    params_path.write_text(
+        json.dumps({
+            "scenario": SCENARIO_TCO_PARAMS,
+            "vehicle_types": [
+                {"name_short": ns, **p} for ns, p in VEHICLE_TYPE_TCO_PARAMS.items()
+            ],
+        }),
+        encoding="utf-8",
     )
+    init_tco_params(scenario, params_path)
     fleet_session.flush()
     en = (
         fleet_session.query(VehicleType)
@@ -75,21 +74,26 @@ def test_vehicle_type_params_written(
 
 
 def test_unknown_vehicle_name_short_warns(
-    fleet_session: Session, scenario: Scenario
+    fleet_session: Session, scenario: Scenario, tmp_path: Path
 ) -> None:
-    with pytest.warns(UserWarning, match="UNKNOWN_VT"):
-        init_tco_params(
-            scenario,
-            vehicle_type_params=[
-                VehicleTypeTCOParams(
-                    name_short="UNKNOWN_VT",
-                    useful_life=10,
-                    procurement_cost=100_000.0,
-                    cost_escalation=0.0,
-                    average_electricity_consumption=1.0,
-                )
+    params_path = tmp_path / "params.json"
+    params_path.write_text(
+        json.dumps({
+            "scenario": SCENARIO_TCO_PARAMS,
+            "vehicle_types": [
+                {
+                    "name_short": "UNKNOWN_VT",
+                    "useful_life": 10,
+                    "procurement_cost": 100_000.0,
+                    "cost_escalation": 0.0,
+                    "average_electricity_consumption": 1.0,
+                }
             ],
-        )
+        }),
+        encoding="utf-8",
+    )
+    with pytest.warns(UserWarning, match="UNKNOWN_VT"):
+        init_tco_params(scenario, params_path)
 
 
 # ---------------------------------------------------------------------------
@@ -98,20 +102,20 @@ def test_unknown_vehicle_name_short_warns(
 
 
 def test_battery_type_params_written(
-    fleet_session: Session, scenario: Scenario
+    fleet_session: Session, scenario: Scenario, tmp_path: Path
 ) -> None:
-    init_tco_params(
-        scenario,
-        battery_type_params=[
-            BatteryTypeTCOParams(
-                vehicle_name_short=ns,
-                procurement_cost=BATTERY_TCO_PARAMS["procurement_cost"],
-                useful_life=BATTERY_TCO_PARAMS["useful_life"],
-                cost_escalation=BATTERY_TCO_PARAMS["cost_escalation"],
-            )
-            for ns in VEHICLE_TYPE_TCO_PARAMS
-        ],
+    params_path = tmp_path / "params.json"
+    params_path.write_text(
+        json.dumps({
+            "scenario": SCENARIO_TCO_PARAMS,
+            "battery_types": [
+                {"vehicle_name_short": ns, **BATTERY_TCO_PARAMS}
+                for ns in VEHICLE_TYPE_TCO_PARAMS
+            ],
+        }),
+        encoding="utf-8",
     )
+    init_tco_params(scenario, params_path)
     fleet_session.flush()
     bts = (
         fleet_session.query(BatteryType)
@@ -126,22 +130,26 @@ def test_battery_type_params_written(
 
 
 def test_battery_missing_assignment_warns(
-    db_session: Session, scenario: Scenario
+    db_session: Session, scenario: Scenario, tmp_path: Path
 ) -> None:
     """VehicleType without battery_type_id → skip with UserWarning."""
-    # No BatteryType created, so battery_type_id is None for all VehicleTypes.
-    with pytest.warns(UserWarning, match="no BatteryType assigned"):
-        init_tco_params(
-            scenario,
-            battery_type_params=[
-                BatteryTypeTCOParams(
-                    vehicle_name_short="EN",
-                    procurement_cost=190.0,
-                    useful_life=7,
-                    cost_escalation=-0.03,
-                )
+    params_path = tmp_path / "params.json"
+    params_path.write_text(
+        json.dumps({
+            "scenario": SCENARIO_TCO_PARAMS,
+            "battery_types": [
+                {
+                    "vehicle_name_short": "EN",
+                    "procurement_cost": 190.0,
+                    "useful_life": 7,
+                    "cost_escalation": -0.03,
+                }
             ],
-        )
+        }),
+        encoding="utf-8",
+    )
+    with pytest.warns(UserWarning, match="no BatteryType assigned"):
+        init_tco_params(scenario, params_path)
 
 
 # ---------------------------------------------------------------------------
@@ -150,19 +158,20 @@ def test_battery_missing_assignment_warns(
 
 
 def test_charging_point_type_params_written(
-    fleet_session: Session, scenario: Scenario
+    fleet_session: Session, scenario: Scenario, tmp_path: Path
 ) -> None:
-    init_tco_params(
-        scenario,
-        charging_point_type_params=[
-            ChargingPointTypeTCOParams.from_dict(
-                {"type": "depot", **DEPOT_CPT_TCO_PARAMS}
-            ),
-            ChargingPointTypeTCOParams.from_dict(
-                {"type": "opportunity", **OPPORTUNITY_CPT_TCO_PARAMS}
-            ),
-        ],
+    params_path = tmp_path / "params.json"
+    params_path.write_text(
+        json.dumps({
+            "scenario": SCENARIO_TCO_PARAMS,
+            "charging_point_types": [
+                {"type": "depot", **DEPOT_CPT_TCO_PARAMS},
+                {"type": "opportunity", **OPPORTUNITY_CPT_TCO_PARAMS},
+            ],
+        }),
+        encoding="utf-8",
     )
+    init_tco_params(scenario, params_path)
     fleet_session.flush()
     cpts = (
         fleet_session.query(ChargingPointType)
@@ -175,17 +184,20 @@ def test_charging_point_type_params_written(
         assert cpt.tco_parameters["useful_life"] == 20
 
 
-def test_missing_cpt_warns(db_session: Session, scenario: Scenario) -> None:
+def test_missing_cpt_warns(
+    db_session: Session, scenario: Scenario, tmp_path: Path
+) -> None:
     """No ChargingPointType rows → skip with UserWarning."""
+    params_path = tmp_path / "params.json"
+    params_path.write_text(
+        json.dumps({
+            "scenario": SCENARIO_TCO_PARAMS,
+            "charging_point_types": [{"type": "depot", **DEPOT_CPT_TCO_PARAMS}],
+        }),
+        encoding="utf-8",
+    )
     with pytest.warns(UserWarning, match="'depot' ChargingPointType"):
-        init_tco_params(
-            scenario,
-            charging_point_type_params=[
-                ChargingPointTypeTCOParams.from_dict(
-                    {"type": "depot", **DEPOT_CPT_TCO_PARAMS}
-                )
-            ],
-        )
+        init_tco_params(scenario, params_path)
 
 
 # ---------------------------------------------------------------------------
@@ -194,22 +206,23 @@ def test_missing_cpt_warns(db_session: Session, scenario: Scenario) -> None:
 
 
 def test_charging_infra_params_written(
-    fleet_session: Session, scenario: Scenario
+    fleet_session: Session, scenario: Scenario, tmp_path: Path
 ) -> None:
     from sqlalchemy import distinct
     from eflips.model import Depot, Event, EventType, Station
 
-    init_tco_params(
-        scenario,
-        charging_infra_params=[
-            ChargingInfrastructureTCOParams.from_dict(
-                {"type": "depot", **DEPOT_STATION_TCO_PARAMS}
-            ),
-            ChargingInfrastructureTCOParams.from_dict(
-                {"type": "station", **OPPORTUNITY_STATION_TCO_PARAMS}
-            ),
-        ],
+    params_path = tmp_path / "params.json"
+    params_path.write_text(
+        json.dumps({
+            "scenario": SCENARIO_TCO_PARAMS,
+            "charging_infrastructure": [
+                {"type": "depot", **DEPOT_STATION_TCO_PARAMS},
+                {"type": "station", **OPPORTUNITY_STATION_TCO_PARAMS},
+            ],
+        }),
+        encoding="utf-8",
     )
+    init_tco_params(scenario, params_path)
     fleet_session.flush()
 
     # All depot stations (via Depot.station_id) should have tco_parameters set.
@@ -244,21 +257,26 @@ def test_charging_infra_params_written(
 
 
 def test_battery_unknown_vehicle_name_short_warns(
-    db_session: Session, scenario: Scenario
+    db_session: Session, scenario: Scenario, tmp_path: Path
 ) -> None:
     """vehicle_name_short not in DB → skip with warning."""
-    with pytest.warns(UserWarning, match="UNKNOWN"):
-        init_tco_params(
-            scenario,
-            battery_type_params=[
-                BatteryTypeTCOParams(
-                    vehicle_name_short="UNKNOWN",
-                    procurement_cost=190.0,
-                    useful_life=7,
-                    cost_escalation=-0.03,
-                )
+    params_path = tmp_path / "params.json"
+    params_path.write_text(
+        json.dumps({
+            "scenario": SCENARIO_TCO_PARAMS,
+            "battery_types": [
+                {
+                    "vehicle_name_short": "UNKNOWN",
+                    "procurement_cost": 190.0,
+                    "useful_life": 7,
+                    "cost_escalation": -0.03,
+                }
             ],
-        )
+        }),
+        encoding="utf-8",
+    )
+    with pytest.warns(UserWarning, match="UNKNOWN"):
+        init_tco_params(scenario, params_path)
 
 
 # ---------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Union, Optional, Any, Dict, Tuple, List
+from typing import Union, Optional, Any, Tuple
 
 from sqlalchemy import distinct
 
@@ -19,17 +19,11 @@ from eflips.model import (
 
 from eflips.impact.tco.calculation import TCOCalculator
 from eflips.impact.tco.dataclasses import (
-    ScenarioTCOParams,
-    VehicleTypeTCOParams,
-    BatteryTypeTCOParams,
-    ChargingPointTypeTCOParams,
-    ChargingInfrastructureTCOParams,
     TCOParamSet,
     TCOResult,
 )
 from eflips.impact.utils import (
     create_session,
-    get_scaling_window,
     get_extraction_window,
 )
 import logging
@@ -37,13 +31,8 @@ import logging
 
 def init_tco_params(
     scenario: Union[Scenario, int, Any],
-    json_path: Optional[Union[str, Path]] = None,
+    json_path: Union[str, Path],
     database_url: Optional[str] = None,
-    scenario_params: Optional[ScenarioTCOParams] = None,
-    vehicle_type_params: Optional[List[VehicleTypeTCOParams]] = None,
-    battery_type_params: Optional[List[BatteryTypeTCOParams]] = None,
-    charging_point_type_params: Optional[List[ChargingPointTypeTCOParams]] = None,
-    charging_infra_params: Optional[List[ChargingInfrastructureTCOParams]] = None,
 ) -> None:
     """Initialize TCO parameters for the given scenario in the database.
 
@@ -51,10 +40,6 @@ def init_tco_params(
     ChargingPointType row creation is the responsibility of
     :func:`eflips.impact.utils.fleet_init.complete_fleet`; this function will warn
     and skip if a referenced BatteryType or ChargingPointType is missing.
-
-    Pass either ``json_path`` *or* the individual ``*_params`` keyword
-    arguments — not both. Providing ``json_path`` together with any
-    ``*_params`` argument raises :class:`ValueError`.
 
     The JSON file must follow the :class:`~eflips.impact.tco.dataclasses.TCOParamSet`
     structure:
@@ -71,39 +56,14 @@ def init_tco_params(
 
     :param scenario: An eflips.model.Scenario object, a scenario id, or any
         object with a valid scenario id.
-    :param json_path: Path to the JSON parameter file. Mutually exclusive with
-        the individual ``*_params`` arguments.
+    :param json_path: Path to the JSON parameter file.
     :param database_url: The database URL to connect to.
-    :param scenario_params: A :class:`ScenarioTCOParams` instance.
-    :param vehicle_type_params: A list of :class:`VehicleTypeTCOParams` instances.
-        Matched to existing VehicleTypes in the database by ``name_short``.
-    :param battery_type_params: A list of :class:`BatteryTypeTCOParams` instances.
-        Matched via ``vehicle_name_short`` to find the associated VehicleType, then
-        writes ``tco_parameters`` on the linked BatteryType row. Skips with a warning
-        if the VehicleType has no BatteryType assigned (call ``complete_fleet`` first).
-    :param charging_point_type_params: A list of :class:`ChargingPointTypeTCOParams`
-        instances. Matched by ``type`` ("depot" or "opportunity"). Skips with a warning
-        if no ChargingPointType of the given type exists in the scenario (call
-        ``complete_fleet`` first). Assumes at most one ChargingPointType per type per
-        scenario.
-    :param charging_infra_params: A list of :class:`ChargingInfrastructureTCOParams`
-        instances. Converted via ``to_dict()`` and applied to stations by ``type``
-        ("station" or "depot").
-    :raises ValueError: If ``json_path`` is supplied together with any individual
-        ``*_params`` argument.
     """
-    individual_params = (
-        scenario_params,
-        vehicle_type_params,
-        battery_type_params,
-        charging_point_type_params,
-        charging_infra_params,
-    )
-    if json_path is not None and any(p is not None for p in individual_params):
-        raise ValueError(
-            "json_path and individual *_params arguments are mutually exclusive. "
-            "Pass either json_path or the individual parameters, not both."
-        )
+    scenario_params = None
+    vehicle_type_params = None
+    battery_type_params = None
+    charging_point_type_params = None
+    charging_infra_params = None
 
     if json_path is not None:
         params = TCOParamSet.from_json(Path(json_path))
