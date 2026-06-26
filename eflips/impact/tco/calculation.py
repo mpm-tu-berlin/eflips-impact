@@ -131,7 +131,6 @@ def _load_capex_items_infrastructure(
     :returns: A tuple ``(list_of_capex_items, total_slots)``.
     """
 
-
     charging_point_types = scenario.charging_point_types
     list_asset_charging_infra = []
     total_slots = 0
@@ -167,7 +166,10 @@ def _load_capex_items_infrastructure(
                 sim_data_st = station_data.get(station.id)
                 station_peak = sim_data_st.peak_simultaneous_vehicles
                 station_capacity = station.amount_charging_places
-                if station_capacity is not None and station_peak < 0.80 * station_capacity:
+                if (
+                    station_capacity is not None
+                    and station_peak < 0.80 * station_capacity
+                ):
                     warnings.warn(
                         f"Station {station.id}: peak vehicles ({station_peak}) is significantly "
                         f"below capacity ({station_capacity}). Infrastructure may be oversized.",
