@@ -1,6 +1,6 @@
 [project]
 name = "eflips-impact"
-version = "2.0.0"
+version = "2.0.1"
 description = "TCO and LCA analysis for eFLIPS"
 license = {text = "AGPL-3.0-or-later"}
 authors = [

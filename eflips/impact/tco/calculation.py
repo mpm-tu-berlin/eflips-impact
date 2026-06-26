@@ -1,7 +1,8 @@
 import datetime
 import logging
 import math
-from typing import List, Optional
+import warnings
+from typing import List, Optional, Union, Dict
 
 from sqlalchemy import or_, and_, distinct, func
 
@@ -129,8 +130,6 @@ def _load_capex_items_infrastructure(
     :param station_data: Pre-built per-station peak data from :class:`ScenarioSimData`.
     :returns: A tuple ``(list_of_capex_items, total_slots)``.
     """
-    area_peaks: dict[int, AreaSimData] = area_data
-    station_peaks: dict[int, StationSimData] = station_data
 
     charging_point_types = scenario.charging_point_types
     list_asset_charging_infra = []
@@ -140,15 +139,52 @@ def _load_capex_items_infrastructure(
         total_count = 0
         if charging_point_type.areas is not None:
             for area in charging_point_type.areas:
-                sim_data = area_peaks.get(area.id)
+                sim_data = area_data.get(area.id)
+                area_capacity = area.capacity
+                area_peak = sim_data.peak_simultaneous_vehicles
+
+                if area_capacity is not None and area_peak < 0.80 * area_capacity:
+                    warnings.warn(
+                        f"Area {area.id}: peak vehicles ({area_peak}) is significantly "
+                        f"below capacity ({area_capacity}). The calculation will used capacity, "
+                        f"but infrastructure may be oversized.",
+                        stacklevel=2,
+                    )
+                elif area_capacity is not None and area_peak < area_capacity:
+                    logger.warning(
+                        "Area %d: peak vehicles (%d) is mildly below capacity (%d).",
+                        area.id,
+                        area_peak,
+                        area_capacity,
+                    )
+
                 if sim_data is not None:
-                    total_count += sim_data.peak_simultaneous_vehicles
+                    total_count += area_capacity
 
         if charging_point_type.stations is not None:
             for station in charging_point_type.stations:
-                sim_data_st = station_peaks.get(station.id)
+                sim_data_st = station_data.get(station.id)
+                station_peak = sim_data_st.peak_simultaneous_vehicles
+                station_capacity = station.amount_charging_places
+                if (
+                    station_capacity is not None
+                    and station_peak < 0.80 * station_capacity
+                ):
+                    warnings.warn(
+                        f"Station {station.id}: peak vehicles ({station_peak}) is significantly "
+                        f"below capacity ({station_capacity}). Infrastructure may be oversized.",
+                        stacklevel=2,
+                    )
+                elif station_capacity is not None and station_peak < station_capacity:
+                    logger.warning(
+                        "Station %d: peak vehicles (%d) is mildly below capacity (%d).",
+                        station.id,
+                        station_peak,
+                        station_capacity,
+                    )
+
                 if sim_data_st is not None:
-                    total_count += sim_data_st.peak_simultaneous_vehicles
+                    total_count += station_capacity
 
         if total_count != 0:
             total_slots += total_count

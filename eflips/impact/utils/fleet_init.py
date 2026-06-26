@@ -282,10 +282,11 @@ def _validate(session: Session, scenario: Scenario, config: _FleetConfig) -> boo
         expected.add("opportunity")
 
     actual = set(cpt_types)
-    if actual != expected:
+
+    if not expected.issubset(actual):
         warnings.warn(
-            f"fleet.json charging_point_types {sorted(actual)} do not match the "
-            f"scenario's actual charging topology {sorted(expected)} (depot iff "
+            f"fleet.json charging_point_types {sorted(actual)} do not fully provide the "
+            f"scenario's actual charging point information {sorted(expected)} (depot iff "
             f"any Area has a Process with electric_power; opportunity iff any "
             f"CHARGING_OPPORTUNITY event exists). No changes made to scenario "
             f"{scenario.id}.",
