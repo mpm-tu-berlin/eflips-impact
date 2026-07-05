@@ -125,6 +125,7 @@ class ChargingInfrastructureTCOParams:
     procurement_cost: float
     useful_life: int
     cost_escalation: float
+    station_ids: Optional[List[int]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -140,6 +141,7 @@ class ChargingInfrastructureTCOParams:
             procurement_cost=float(d["procurement_cost"]),
             useful_life=int(d["useful_life"]),
             cost_escalation=float(d["cost_escalation"]),
+            station_ids=d.get("station_ids"),
         )
 
 
