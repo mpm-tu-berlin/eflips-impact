@@ -192,6 +192,7 @@ class TestValidation:
             .count()
             == 0
         )
+
     def test_cpt_topology_mismatch_warns(
         self, db_session: Session, scenario: Scenario, tmp_path: Path
     ) -> None:
