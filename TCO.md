@@ -117,7 +117,7 @@ One entry per charging point type (`"depot"` or `"opportunity"`). The quantity o
 
 ### `charging_infrastructure`
 
-Civil and building infrastructure costs, separate from the individual charger units above. One entry per infrastructure type.
+Civil and building infrastructure costs, separate from the individual charger units above. A `type` may have one **default** entry (applied to every station of that type) plus any number of **override** entries that target specific stations by id.
 
 | Field | Type | Description |
 |---|---|---|
@@ -125,6 +125,25 @@ Civil and building infrastructure costs, separate from the individual charger un
 | `procurement_cost` | float | Civil infrastructure cost per site (EUR). The number of sites is counted from the simulation. |
 | `useful_life` | int | Infrastructure lifetime in years. |
 | `cost_escalation` | float | Annual change in construction cost. |
+| `station_ids` | list[int] \| omit | Optional. `Station.id` values this entry applies to. Omit to make the entry the type's default (applies to all stations of that type). |
+
+**Default vs. override entries.** For each `type`:
+
+- The entry with **no** `station_ids` is the *default* — its parameters are written to every station of that type. At most one default per type is allowed (more than one raises `ValueError`).
+- Each entry **with** `station_ids` is an *override* — its parameters are written only to the listed stations, taking precedence over the default. Express "these stations get A, all others of this type get B" as one override entry (A, with `station_ids`) plus one default entry (B, without).
+
+Every affected station is resolved to a single parameter set *before* anything is written, so the result does not depend on the order of entries in the list. An override `station_id` that is not actually a station of its declared `type` in the scenario is still written, but emits a warning; an id that matches no `Station` in the scenario is skipped with a warning.
+
+**Example** — a default depot cost plus a higher-cost override for three specific depot stations:
+
+```json
+"charging_infrastructure": [
+  { "type": "depot", "procurement_cost": 2397989.95, "useful_life": 20, "cost_escalation": 0.02 },
+  { "type": "depot", "procurement_cost": 3000000.0, "useful_life": 20, "cost_escalation": 0.02,
+    "station_ids": [1102005186, 1102005187, 1102005188] },
+  { "type": "station", "procurement_cost": 269773.87, "useful_life": 20, "cost_escalation": 0.02 }
+]
+```
 
 > **Note:** `charging_point_types` and `charging_infrastructure` both use a `type` field, but with different vocabularies. `charging_point_types` uses `"depot"` / `"opportunity"` (matching `fleet.json`); `charging_infrastructure` uses `"depot"` / `"station"` (referring to physical sites).
 
