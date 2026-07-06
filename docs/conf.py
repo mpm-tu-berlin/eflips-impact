@@ -9,7 +9,7 @@
 project = "eflips-impact"
 copyright = "2026, MPM TU Berlin"
 author = "MPM TU Berlin"
-release = "2.0.0"
+release = "2.1.0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
