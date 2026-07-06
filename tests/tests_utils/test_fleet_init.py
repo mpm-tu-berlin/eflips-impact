@@ -192,7 +192,6 @@ class TestValidation:
             .count()
             == 0
         )
-
     def test_cpt_topology_mismatch_warns(
         self, db_session: Session, scenario: Scenario, tmp_path: Path
     ) -> None:
@@ -204,7 +203,7 @@ class TestValidation:
         ]
         path = _write_fleet_json(tmp_path, data)
 
-        with pytest.warns(UserWarning, match="charging topology"):
+        with pytest.warns(UserWarning, match="fully provide"):
             complete_fleet(scenario, path, delete_existing_data=False)
 
         assert (
