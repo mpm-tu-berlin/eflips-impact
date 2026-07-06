@@ -204,7 +204,7 @@ class TestValidation:
         ]
         path = _write_fleet_json(tmp_path, data)
 
-        with pytest.warns(UserWarning, match="charging topology"):
+        with pytest.warns(UserWarning, match="fully provide"):
             complete_fleet(scenario, path, delete_existing_data=False)
 
         assert (

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Union, Optional, Any, Tuple
 
 from sqlalchemy import distinct
+from sqlalchemy.orm import Session
 
 from eflips.model import (
     Scenario,
@@ -19,6 +20,7 @@ from eflips.model import (
 
 from eflips.impact.tco.calculation import TCOCalculator
 from eflips.impact.tco.dataclasses import (
+    ChargingInfrastructureTCOParams,
     TCOParamSet,
     TCOResult,
 )
@@ -27,6 +29,37 @@ from eflips.impact.utils import (
     get_extraction_window,
 )
 import logging
+
+
+def _stations_of_type(session: Session, scenario_id: int, infra_type: str) -> set[int]:
+    """Return the ids of stations matching a charging-infrastructure type.
+
+    :param session: An open database session.
+    :param scenario_id: The scenario to search within.
+    :param infra_type: ``"station"`` for opportunity-charging stations (those with
+        ``CHARGING_OPPORTUNITY`` events) or ``"depot"`` for stations attached to a depot.
+    :returns: The set of matching :class:`~eflips.model.Station` ids.
+    :raises ValueError: If ``infra_type`` is neither ``"station"`` nor ``"depot"``.
+    """
+    match infra_type:
+        case "station":
+            rows = (
+                session.query(distinct(Event.station_id))
+                .filter(
+                    Event.event_type == EventType.CHARGING_OPPORTUNITY,
+                    Event.scenario_id == scenario_id,
+                )
+                .all()
+            )
+        case "depot":
+            rows = (
+                session.query(Depot.station_id)
+                .filter(Depot.scenario_id == scenario_id)
+                .all()
+            )
+        case _:
+            raise ValueError(f"Unknown infrastructure type: {infra_type}")
+    return {row[0] for row in rows}
 
 
 def init_tco_params(
@@ -187,48 +220,70 @@ def init_tco_params(
 
         # --- Charging infrastructure ---
         #
-        # ASSUMPTION: all opportunity-charging stations share the same infrastructure TCO
-        # parameters, and all depot stations share the same infrastructure TCO parameters.
-        # The same dict is written to every station of the matching type. If per-station
-        # parameters are needed in the future, replace the bulk loop below with a per-station
-        # lookup and introduce a station identifier (e.g. station name) as a match key in
-        # ChargingInfrastructureTCOParams.
+        # Each ``type`` may have at most one *default* entry (no ``station_ids``), applied
+        # to every station of that type, plus any number of *override* entries
+        # (``station_ids`` given) that target specific stations. Overrides win over the
+        # default, so "these stations get A, everything else of this type gets B" is
+        # expressed as one override entry (A) plus one default entry (B).
+        #
+        # Every affected station is resolved to a single parameter set *before* writing, so
+        # the outcome does not depend on the order of entries in the JSON. An override id
+        # outside its declared type's set of stations is still written, but warns.
         if charging_infra_params is not None:
+            # Station ids in scope for each referenced type (raises on unknown types).
+            scopes = {
+                infra_type: _stations_of_type(session, scenario.id, infra_type)
+                for infra_type in {p.type for p in charging_infra_params}
+            }
+
+            resolved: dict[int, ChargingInfrastructureTCOParams] = {}
+
+            # Default layer: at most one no-id entry per type, seeded onto its whole scope.
+            for infra_type, scope in scopes.items():
+                defaults = [
+                    p
+                    for p in charging_infra_params
+                    if p.type == infra_type and not p.station_ids
+                ]
+                if len(defaults) > 1:
+                    raise ValueError(
+                        f"Multiple default charging-infrastructure entries (no "
+                        f"station_ids) for type '{infra_type}'; expected at most one."
+                    )
+                if defaults:
+                    for station_id in scope:
+                        resolved[station_id] = defaults[0]
+
+            # Override layer wins over defaults; warn on ids outside their type's scope.
             for infra_param in charging_infra_params:
-                match infra_param.type:
-                    case "station":
-                        charging_station_ids = (
-                            session.query(distinct(Event.station_id))
-                            .filter(
-                                Event.event_type == EventType.CHARGING_OPPORTUNITY,
-                                Event.scenario_id == scenario.id,
-                            )
-                            .all()
+                if not infra_param.station_ids:
+                    continue
+                for station_id in infra_param.station_ids:
+                    if station_id not in scopes[infra_param.type]:
+                        warnings.warn(
+                            f"Station id {station_id} is not a '{infra_param.type}' "
+                            f"charging station in scenario {scenario.id}; writing its "
+                            f"TCO parameters anyway."
                         )
-                        for station_id in charging_station_ids:
-                            station = (
-                                session.query(Station)
-                                .filter(Station.id == station_id[0])
-                                .one()
-                            )
-                            station.tco_parameters = infra_param.to_dict()
-                    case "depot":
-                        depot_stations = (
-                            session.query(Depot.station_id)
-                            .filter(Depot.scenario_id == scenario.id)
-                            .all()
-                        )
-                        for station_id in depot_stations:
-                            station = (
-                                session.query(Station)
-                                .filter(Station.id == station_id[0])
-                                .one()
-                            )
-                            station.tco_parameters = infra_param.to_dict()
-                    case _:
-                        raise ValueError(
-                            f"Unknown infrastructure type: {infra_param.type}"
-                        )
+                    resolved[station_id] = infra_param
+
+            # Single write per resolved station.
+            for station_id, infra_param in resolved.items():
+                station = (
+                    session.query(Station)
+                    .filter(
+                        Station.id == station_id,
+                        Station.scenario_id == scenario.id,
+                    )
+                    .one_or_none()
+                )
+                if station is None:
+                    warnings.warn(
+                        f"Station with id {station_id} not found in scenario "
+                        f"{scenario.id}. Skipping."
+                    )
+                    continue
+                station.tco_parameters = infra_param.to_dict()
 
 
 def calculate_tco(
