@@ -1,6 +1,6 @@
 [project]
 name = "eflips-impact"
-version = "2.1.0"
+version = "2.1.1"
 description = "TCO and LCA analysis for eFLIPS"
 license = {text = "AGPL-3.0-or-later"}
 authors = [
@@ -10,7 +10,7 @@ authors = [
     {name = "Anne Syré", email = "a.syre@tu-berlin.de"}
 ]
 readme = "README.md"
-requires-python = ">=3.10, <3.14"
+requires-python = ">=3.11, <3.15"
 dependencies = [
     "eflips-eval (>=1.9.0,<2.0.0)",
     "pytest (>=9.0.3,<10.0.0)",
