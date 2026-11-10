@@ -26,6 +26,7 @@ from eflips.impact.utils.extraction import (
     _default_scaling_factor,
     extract_simulation_data,
     get_extraction_window,
+    gross_battery_capacity,
 )
 from eflips.impact.tco.cost_items import (
     CapexItem,
@@ -107,7 +108,8 @@ def _load_capex_items_battery(
             name="Battery type " + str(vt.battery_type_id),
             type=CapexItemType.BATTERY,
             useful_life=tco_battery["useful_life"],
-            procurement_cost=tco_battery["procurement_cost"] * vt.battery_capacity,
+            procurement_cost=tco_battery["procurement_cost"]
+            * gross_battery_capacity(vt),
             cost_escalation=tco_battery["cost_escalation"],
             quantity=count,
         )

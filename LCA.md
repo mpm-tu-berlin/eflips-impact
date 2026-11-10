@@ -28,7 +28,7 @@ Fleet size = `ceil(n_vehicles_in_simulation / eta_avail)`.
 
 `battery_mass × battery_EF/kg ÷ battery_lifetime`
 
-Battery mass = `VehicleType.battery_capacity × BatteryType.specific_mass`.
+Battery mass = (`VehicleType.battery_capacity` + `VehicleType.battery_capacity_reserve`) × `BatteryType.specific_mass` (the gross battery: usable capacity plus reserve).
 
 **Energy (use phase, fleet-scaled vehicle-km)**
 

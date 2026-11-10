@@ -142,3 +142,46 @@ def test_calculate_tco_revenue_km_geq_vehicle_km(
     """Revenue-km denominator yields higher per-km cost than vehicle-km."""
     result = calculate_tco(scenario)
     assert result.tco_per_revenue_km >= result.tco_per_vehicle_km
+
+
+# ---------------------------------------------------------------------------
+# Battery CAPEX — the gross battery (usable capacity + reserve)
+# ---------------------------------------------------------------------------
+
+
+def test_battery_capex_prices_the_gross_battery(
+    tco_session: Session, scenario: Scenario
+) -> None:
+    """The bought battery is ``battery_capacity`` plus ``battery_capacity_reserve``."""
+    from eflips.model import BatteryType, VehicleType
+
+    from eflips.impact.tco.calculation import _load_capex_items_battery
+    from eflips.impact.utils.extraction import ScenarioSimData, VehicleTypeSimData
+
+    vehicle_types = (
+        tco_session.query(VehicleType)
+        .filter(
+            VehicleType.scenario_id == scenario.id,
+            VehicleType.battery_type_id.isnot(None),
+        )
+        .all()
+    )
+    assert vehicle_types
+    sim_data = ScenarioSimData(
+        vehicle_type_data={
+            vt.id: VehicleTypeSimData(vt.id, 0.0, 0.0, n_ready=9)
+            for vt in vehicle_types
+        }
+    )
+    for vt in vehicle_types:
+        vt.battery_capacity_reserve = 40.0
+    items = _load_capex_items_battery(tco_session, vehicle_types, sim_data, 0.9)
+    assert len(items) == len(vehicle_types)
+    for vt, item in zip(vehicle_types, items):
+        price = tco_session.get(BatteryType, vt.battery_type_id).tco_parameters[
+            "procurement_cost"
+        ]
+        assert item.procurement_cost == pytest.approx(
+            price * (vt.battery_capacity + 40.0)
+        )
+        assert item.quantity == 10
