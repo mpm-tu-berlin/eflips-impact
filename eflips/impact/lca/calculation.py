@@ -41,6 +41,7 @@ from eflips.impact.utils.extraction import (
     ScenarioSimData,
     StationSimData,
     extract_simulation_data,
+    gross_battery_capacity,
 )
 from eflips.impact.lca.util import DefaultImpactVector
 
@@ -109,16 +110,20 @@ def normalize_to_revenue_km(
 def calculate_battery_mass_kg(
     vehicle_type: VehicleType, battery_type: BatteryType | None
 ) -> float:
-    """Derive battery mass from capacity and specific mass.
+    """Derive battery mass from the gross capacity and specific mass.
 
-    :param vehicle_type: The vehicle type (provides ``battery_capacity``).
+    The gross capacity is the usable ``battery_capacity`` plus the
+    ``battery_capacity_reserve`` (:func:`gross_battery_capacity`).
+
+    :param vehicle_type: The vehicle type (provides ``battery_capacity`` and
+        ``battery_capacity_reserve``).
     :param battery_type: The battery type (provides ``specific_mass``), or
         ``None`` for ICEB.
     :returns: Battery mass in kg, or ``0.0`` for vehicles without a battery.
     """
     if battery_type is None:
         return 0.0
-    return float(vehicle_type.battery_capacity * battery_type.specific_mass)
+    return float(gross_battery_capacity(vehicle_type) * battery_type.specific_mass)
 
 
 def calculate_chassis_emissions(

@@ -143,6 +143,7 @@ def test_calculate_motor_emissions_diesel() -> None:
 def test_calculate_battery_emissions_no_battery() -> None:
     vtype = MagicMock(spec=VehicleType)
     vtype.battery_capacity = 500.0
+    vtype.battery_capacity_reserve = 0.0
     emissions, mass = calculate_battery_emissions(vtype, None)
     assert emissions == DefaultImpactVector.zero()
     assert mass == pytest.approx(0.0)
@@ -151,6 +152,7 @@ def test_calculate_battery_emissions_no_battery() -> None:
 def test_calculate_battery_emissions_with_battery() -> None:
     vtype = MagicMock(spec=VehicleType)
     vtype.battery_capacity = 500.0
+    vtype.battery_capacity_reserve = 0.0
 
     bt = MagicMock(spec=BatteryType)
     bt.specific_mass = 1.0  # 1 kg/kWh → 500 kg
@@ -164,6 +166,26 @@ def test_calculate_battery_emissions_with_battery() -> None:
     emissions, mass = calculate_battery_emissions(vtype, bt)
     assert mass == pytest.approx(500.0)
     assert emissions.gwp == pytest.approx(500.0 * 100.0)
+
+
+def test_calculate_battery_emissions_weigh_the_gross_battery() -> None:
+    """The built battery is ``battery_capacity`` plus ``battery_capacity_reserve``."""
+    vtype = MagicMock(spec=VehicleType)
+    vtype.battery_capacity = 500.0
+    vtype.battery_capacity_reserve = 50.0
+
+    bt = MagicMock(spec=BatteryType)
+    bt.specific_mass = 2.0  # 2 kg/kWh → 1100 kg
+    bt.id = 1
+    bt.tco_parameters = None
+    bt.lca_parameters = BatteryTypeLCAParams(
+        emission_factors_per_kg=DefaultImpactVector(gwp=100.0),
+        battery_lifetime_years=8.0,
+    ).to_dict()
+
+    emissions, mass = calculate_battery_emissions(vtype, bt)
+    assert mass == pytest.approx(1100.0)
+    assert emissions.gwp == pytest.approx(1100.0 * 100.0)
 
 
 # ---------------------------------------------------------------------------
@@ -216,6 +238,7 @@ def _make_beb_vtype() -> MagicMock:
     vtype.empty_mass = 12_000.0
     vtype.charging_efficiency = 0.95
     vtype.battery_capacity = 500.0
+    vtype.battery_capacity_reserve = 0.0
     return vtype
 
 

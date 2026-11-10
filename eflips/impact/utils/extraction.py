@@ -137,6 +137,21 @@ def _default_scaling_factor(
 # ---------------------------------------------------------------------------
 
 
+def gross_battery_capacity(vehicle_type: VehicleType) -> float:
+    """Return the size of the battery that is bought and built, in kWh.
+
+    ``VehicleType.battery_capacity`` is the usable (net) capacity; the
+    ``battery_capacity_reserve`` below it is part of the same battery. The
+    battery's procurement cost and its production emissions scale with the
+    whole (gross) battery: ``battery_capacity + battery_capacity_reserve``.
+
+    :param vehicle_type: The vehicle type.
+    :returns: The gross battery capacity in kWh.
+    """
+    reserve = vehicle_type.battery_capacity_reserve
+    return float(vehicle_type.battery_capacity) + float(reserve or 0.0)
+
+
 def extract_vehicle_and_revenue_kilometers(
     session: Session,
     scenario_id: int,

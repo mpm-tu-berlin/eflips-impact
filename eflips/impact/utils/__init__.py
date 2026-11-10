@@ -24,6 +24,7 @@ from eflips.impact.utils.extraction import (
     extract_vehicle_and_revenue_kilometers,
     extract_vehicle_count_per_type,
     get_extraction_window,
+    gross_battery_capacity,
 )
 from eflips.impact.utils.fleet_init import complete_fleet
 from eflips.impact.utils.session import create_session

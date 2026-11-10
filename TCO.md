@@ -11,7 +11,7 @@ TCO aggregates all capital and operational expenditure over a project horizon an
 | Category | Quantity source | Unit cost source |
 |---|---|---|
 | Vehicles | `ceil(n_vehicles_in_simulation / eta_avail)` per vehicle type | `procurement_cost` in `vehicle_types` |
-| Batteries | Same fleet size as vehicle | `procurement_cost` (EUR/kWh) × `VehicleType.battery_capacity` (kWh) |
+| Batteries | Same fleet size as vehicle | `procurement_cost` (EUR/kWh) × gross capacity (kWh): `VehicleType.battery_capacity` + `VehicleType.battery_capacity_reserve` |
 | Charging points | Peak simultaneous vehicles per area/station from simulation | `procurement_cost` in `charging_point_types` |
 | Charging infrastructure | Number of depot stations / opportunity-charging stations from simulation | `procurement_cost` in `charging_infrastructure` |
 
@@ -96,7 +96,7 @@ One entry per battery-electric vehicle type. Matched by `vehicle_name_short` = `
 | Field | Type | Description |
 |---|---|---|
 | `vehicle_name_short` | string | Matches `VehicleType.name_short` of the corresponding BEB. |
-| `procurement_cost` | float | Battery purchase price in **EUR/kWh**. Total cost = `procurement_cost × VehicleType.battery_capacity`. |
+| `procurement_cost` | float | Battery purchase price in **EUR/kWh**. Total cost = `procurement_cost × (VehicleType.battery_capacity + VehicleType.battery_capacity_reserve)` (the gross battery). |
 | `useful_life` | int | Battery lifetime in years. |
 | `cost_escalation` | float | Annual change in battery price (typically negative). |
 
